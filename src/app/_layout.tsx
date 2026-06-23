@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { Animated, StyleSheet, View } from "react-native";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { View, StyleSheet } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import {
@@ -25,58 +25,52 @@ import { CelebrationProvider } from "@/lib/celebrate";
 import Onboarding from "@/components/onboarding";
 import OttoChat from "@/components/otto-chat";
 import Splash from "@/components/splash";
-import CinematicIntro from "@/components/cinematic-intro";
-
-// Plays the cinematic intro once per cold start (resets on a full app reload).
-let introSeen = false;
+import { EASE } from "@/components/anim";
 
 function Shell() {
   const { c, isDark } = useTheme();
   const { ready, profile } = useStore();
-  // Capture the onboarding decision once hydration finishes, so completing the
-  // flow (which sets profile) doesn't dismiss the overlay before "ready".
   const [onboarding, setOnboarding] = useState<boolean | null>(null);
-  // Self-playing intro overlays everything (even the loading splash) on launch.
-  const [intro, setIntro] = useState(!introSeen);
-  const dismissIntro = () => { introSeen = true; setIntro(false); };
+  const [splashGone, setSplashGone] = useState(false);
+  const splashOpacity = useRef(new Animated.Value(1)).current;
+
   useEffect(() => {
-    // Show whenever there's no profile (first run OR "redo onboarding"). Completing
-    // the flow sets the profile but we keep the overlay until onDone fires.
     if (ready && !isOnboarded(profile)) setOnboarding(true);
   }, [ready, profile]);
+
+  // Fade the splash out once the store is hydrated, then unmount it.
+  useEffect(() => {
+    if (ready) {
+      Animated.timing(splashOpacity, { toValue: 0, duration: 480, easing: EASE, useNativeDriver: true })
+        .start(() => setSplashGone(true));
+    }
+  }, [ready, splashOpacity]);
+
   const showOnboarding = onboarding === true;
 
   return (
     <View style={{ flex: 1, backgroundColor: c.obsidian }}>
       <StatusBar style={isDark ? "light" : "dark"} />
-      {!ready ? (
-        // Branded loading screen until local data has hydrated.
-        <Splash />
-      ) : (
-        <>
-          {/* Each screen paints its own opaque base + shader behind its content, so
-              sibling tab screens never bleed through. */}
-          <Stack
-            screenOptions={{
-              headerShown: false,
-              contentStyle: { backgroundColor: c.obsidian },
-            }}
-          />
-          {/* Otto coach FAB — hidden during onboarding/intro. */}
-          {!showOnboarding && !intro && <OttoChat />}
-          {/* First-run focus-area onboarding overlays the app until completed. */}
-          {showOnboarding && (
-            <View style={StyleSheet.absoluteFill}>
-              <Onboarding onDone={() => setOnboarding(false)} />
-            </View>
-          )}
-        </>
-      )}
-      {/* Cinematic auto-intro sits above everything, including the splash. */}
-      {intro && (
+
+      {/* App content always mounts — the splash overlays it during load */}
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          contentStyle: { backgroundColor: c.obsidian },
+        }}
+      />
+      {ready && !showOnboarding && <OttoChat />}
+      {showOnboarding && (
         <View style={StyleSheet.absoluteFill}>
-          <CinematicIntro onDone={dismissIntro} />
+          <Onboarding onDone={() => setOnboarding(false)} />
         </View>
+      )}
+
+      {/* Splash fades out once ready, then unmounts */}
+      {!splashGone && (
+        <Animated.View style={[StyleSheet.absoluteFill, { opacity: splashOpacity }]}>
+          <Splash />
+        </Animated.View>
       )}
     </View>
   );
@@ -96,6 +90,7 @@ export default function RootLayout() {
     JetBrainsMono_600SemiBold,
   });
 
+  // Fonts load in ~100ms — Splash shows while we wait (self-contained, no font deps).
   if (!loaded) return <Splash />;
 
   return (

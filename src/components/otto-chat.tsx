@@ -1,16 +1,17 @@
 import { useEffect, useRef, useState } from "react";
 import {
-  Modal,
-  View,
-  Text,
-  TextInput,
   Animated,
+  Dimensions,
   Easing,
-  ScrollView,
-  StyleSheet,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
 } from "react-native";
 import { BlurView } from "expo-blur";
 import * as Speech from "expo-speech";
@@ -20,78 +21,80 @@ import { Ionicons } from "@expo/vector-icons";
 import { useTheme, radius, fonts, type Palette } from "@/lib/theme";
 import { PressableScale, EASE } from "@/components/anim";
 import { voiceSupported } from "@/lib/voice";
-import {
-  useStore,
-  scoreFor,
-  todayLog,
-  streak,
-  winsToday,
-  monthRevenue,
-} from "@/lib/store";
+import { useStore, scoreFor, todayLog, streak, winsToday, monthRevenue } from "@/lib/store";
 
-// Native speech recognition only exists in a dev build — require it lazily so
-// the module never evaluates (and never crashes) inside Expo Go.
+// Lazy-require voice capture so Expo Go never crashes on missing native module.
 const VoiceCapture: React.ComponentType<{
   onTranscript: (t: string) => void;
   onDone: (final: string) => void;
 }> | null = voiceSupported ? require("./voice-capture").default : null;
 
-interface Msg { id: string; role: "bot" | "user"; text: string }
-const SUGGESTIONS = ["How am I doing?", "What should I focus on?", "How much did I earn?", "My streak?"];
+const { height: SCREEN_H } = Dimensions.get("window");
+// Sheet occupies 88% of screen — feels like a proper chat surface, not a widget.
+const SHEET_H = SCREEN_H * 0.88;
 
-/* ── Bubble that animates in on mount ── */
+const SUGGESTIONS = [
+  "How am I doing today?",
+  "What should I focus on?",
+  "How's my streak?",
+  "How much did I earn?",
+  "Any habits left?",
+];
+
+interface Msg { id: string; role: "bot" | "user"; text: string }
+
+/* ── Animated chat bubble ── */
 function Bubble({ m, c }: { m: Msg; c: Palette }) {
   const v = useRef(new Animated.Value(0)).current;
   useEffect(() => {
-    Animated.timing(v, { toValue: 1, duration: 320, easing: EASE, useNativeDriver: true }).start();
+    Animated.timing(v, { toValue: 1, duration: 300, easing: EASE, useNativeDriver: true }).start();
   }, [v]);
   const style = {
     opacity: v,
-    transform: [{ translateY: v.interpolate({ inputRange: [0, 1], outputRange: [10, 0] }) }],
+    transform: [{ translateY: v.interpolate({ inputRange: [0, 1], outputRange: [8, 0] }) }],
   };
   if (m.role === "user") {
     return (
-      <Animated.View style={[style, styles.bubbleUser, { backgroundColor: c.ink }]}>
-        <Text style={{ color: c.obsidian, fontFamily: fonts.body, fontSize: 14, lineHeight: 20 }}>{m.text}</Text>
+      <Animated.View style={[style, bs.user, { backgroundColor: c.ink }]}>
+        <Text style={{ color: c.obsidian, fontFamily: fonts.body, fontSize: 15, lineHeight: 22 }}>{m.text}</Text>
       </Animated.View>
     );
   }
   return (
-    <Animated.View style={[style, styles.bubbleBot, { backgroundColor: c.fill, borderColor: c.line }]}>
-      <Text style={{ color: c.ink, fontFamily: fonts.body, fontSize: 14, lineHeight: 20 }}>{m.text}</Text>
+    <Animated.View style={[style, bs.bot, { backgroundColor: c.fill, borderColor: c.line }]}>
+      <Text style={{ color: c.ink, fontFamily: fonts.body, fontSize: 15, lineHeight: 22 }}>{m.text}</Text>
     </Animated.View>
   );
 }
 
-/* ── "Otto is thinking" bouncing dots ── */
+/* ── Bouncing typing dots ── */
 function TypingDots({ c }: { c: Palette }) {
-  const dots = [useRef(new Animated.Value(0)).current, useRef(new Animated.Value(0)).current, useRef(new Animated.Value(0)).current];
+  const a = useRef(new Animated.Value(0)).current;
+  const b = useRef(new Animated.Value(0)).current;
+  const cd = useRef(new Animated.Value(0)).current;
   useEffect(() => {
-    const anims = dots.map((d, i) =>
+    const dot = (v: Animated.Value, delay: number) =>
       Animated.loop(
         Animated.sequence([
-          Animated.delay(i * 140),
-          Animated.timing(d, { toValue: 1, duration: 320, easing: Easing.out(Easing.quad), useNativeDriver: true }),
-          Animated.timing(d, { toValue: 0, duration: 320, easing: Easing.in(Easing.quad), useNativeDriver: true }),
-          Animated.delay((2 - i) * 140),
+          Animated.delay(delay),
+          Animated.timing(v, { toValue: 1, duration: 300, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+          Animated.timing(v, { toValue: 0, duration: 300, easing: Easing.in(Easing.quad), useNativeDriver: true }),
+          Animated.delay(300 - delay),
         ])
-      )
-    );
-    anims.forEach((a) => a.start());
-    return () => anims.forEach((a) => a.stop());
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+      );
+    const anims = [dot(a, 0), dot(b, 130), dot(cd, 260)];
+    anims.forEach((x) => x.start());
+    return () => anims.forEach((x) => x.stop());
+  }, [a, b, cd]);
+
+  const dotStyle = (v: Animated.Value) => ({
+    opacity: v.interpolate({ inputRange: [0, 1], outputRange: [0.35, 1] }),
+    transform: [{ translateY: v.interpolate({ inputRange: [0, 1], outputRange: [0, -5] }) }],
+  });
   return (
-    <View style={[styles.bubbleBot, styles.typing, { backgroundColor: c.fill, borderColor: c.line }]}>
-      {dots.map((d, i) => (
-        <Animated.View
-          key={i}
-          style={{
-            width: 6, height: 6, borderRadius: 3, backgroundColor: c.inkMuted,
-            transform: [{ translateY: d.interpolate({ inputRange: [0, 1], outputRange: [0, -5] }) }],
-            opacity: d.interpolate({ inputRange: [0, 1], outputRange: [0.4, 1] }),
-          }}
-        />
+    <View style={[bs.bot, bs.dotRow, { backgroundColor: c.fill, borderColor: c.line }]}>
+      {[a, b, cd].map((v, i) => (
+        <Animated.View key={i} style={[bs.dot, { backgroundColor: c.inkMuted }, dotStyle(v)]} />
       ))}
     </View>
   );
@@ -102,36 +105,39 @@ export default function OttoChat() {
   const { c, isDark } = useTheme();
   const s = makeStyles(c);
   const insets = useSafeAreaInsets();
-  const [mounted, setMounted] = useState(false);
+
+  const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
   const [typing, setTyping] = useState(false);
-  const [speakOn, setSpeakOn] = useState(true);
+  const [speakOn, setSpeakOn] = useState(false);
   const [listening, setListening] = useState(false);
   const [transcript, setTranscript] = useState("");
   const [msgs, setMsgs] = useState<Msg[]>([
-    { id: "intro", role: "bot", text: "Hey — I'm Otto, your TheLifeOS coach. Ask me anything about your day." },
+    { id: "intro", role: "bot", text: "Hey — I'm Otto, your TheLifeOS coach. Ask me anything about your day, score, habits, or what to focus on." },
   ]);
+
   const scrollRef = useRef<ScrollView>(null);
-  const anim = useRef(new Animated.Value(0)).current;
+  const sheetAnim = useRef(new Animated.Value(0)).current;
   const pulse = useRef(new Animated.Value(0)).current;
 
+  // FAB pulse ring
   useEffect(() => {
     Animated.loop(
       Animated.sequence([
-        Animated.timing(pulse, { toValue: 1, duration: 1600, easing: Easing.out(Easing.ease), useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 1, duration: 1800, easing: Easing.out(Easing.ease), useNativeDriver: true }),
         Animated.timing(pulse, { toValue: 0, duration: 0, useNativeDriver: true }),
       ])
     ).start();
   }, [pulse]);
 
-  const open = () => {
-    setMounted(true);
-    Animated.spring(anim, { toValue: 1, useNativeDriver: true, friction: 9, tension: 70 }).start();
+  const openSheet = () => {
+    setOpen(true);
+    Animated.spring(sheetAnim, { toValue: 1, useNativeDriver: true, speed: 16, bounciness: 4 }).start();
   };
-  const close = () => {
+  const closeSheet = () => {
     try { Speech.stop(); } catch { /* ignore */ }
-    Animated.timing(anim, { toValue: 0, duration: 220, easing: EASE, useNativeDriver: true }).start(({ finished }) => {
-      if (finished) setMounted(false);
+    Animated.timing(sheetAnim, { toValue: 0, duration: 240, easing: EASE, useNativeDriver: true }).start(({ finished }) => {
+      if (finished) setOpen(false);
     });
   };
 
@@ -141,66 +147,66 @@ export default function OttoChat() {
     const score = scoreFor(log);
     const stk = streak(store.logs);
     const winsT = winsToday(store.wins).length;
-    if (/(focus on|what should|advice|improve)/.test(str)) {
+    if (/(focus on|what should|advice|improve|next)/.test(str)) {
       if (!log) return "Start with today's check-in — it sets your whole score. Two minutes.";
       const gaps: string[] = [];
-      if (log.sleep < 7) gaps.push("get to 7h+ sleep");
+      if (log.sleep < 7) gaps.push("get to 7h+ sleep tonight");
       if (log.water < 2.5) gaps.push("drink more water");
-      if (log.deepWork < 2) gaps.push("get a deep-work block in");
+      if (log.deepWork < 2) gaps.push("block time for deep work");
       if (winsT === 0) gaps.push("log one small win");
       return gaps.length
-        ? `Today, ${gaps[0]}. ${gaps.length > 1 ? "Then " + gaps[1] + "." : "You're close to a great day."}`
-        : "You're dialed in today — protect the momentum.";
+        ? `Today: ${gaps[0]}. ${gaps.length > 1 ? "Then " + gaps[1] + "." : "You're close to a great day."}`
+        : "You're dialled in — protect the momentum and don't break the streak.";
     }
     if (/(how am i|score|doing|day)/.test(str))
-      return `Your life score is ${score}/100${stk ? ` with a ${stk}-day streak` : ""}. ${score >= 70 ? "Crushing it." : score >= 40 ? "Solid — keep building." : "Let's get a check-in in."}`;
+      return `Life score: ${score}/100${stk ? ` · ${stk}-day streak` : ""}. ${score >= 70 ? "Crushing it 🔥" : score >= 40 ? "Solid — keep building." : "Check in to push this up."}`;
     if (/(streak)/.test(str))
-      return stk ? `You're on a ${stk}-day check-in streak. Don't break it. 🔥` : "No streak yet — check in today to start one.";
+      return stk ? `You're on a ${stk}-day streak. Keep it alive 🔥` : "No streak yet — check in today to start one.";
     if (/(win)/.test(str))
-      return `${winsT} small win${winsT === 1 ? "" : "s"} logged today. ${winsT < 3 ? "Log another — they compound." : "Great momentum."}`;
+      return `${winsT} small win${winsT === 1 ? "" : "s"} today. ${winsT < 3 ? "Log another — they compound." : "Great momentum. Keep going."}`;
     if (/(money|earn|revenue|income|\$)/.test(str))
-      return `You've logged $${monthRevenue(store.revenue).toLocaleString()} this month.`;
+      return `You've logged $${monthRevenue(store.revenue).toLocaleString()} in revenue this month.`;
     if (/(habit)/.test(str)) {
       const done = (store.habitLog[new Date().toISOString().slice(0, 10)] || []).length;
-      return store.habits.length ? `${done}/${store.habits.length} habits done today.` : "No habits set yet — add a few to build streaks.";
+      return store.habits.length
+        ? `${done}/${store.habits.length} habits done today.${done < store.habits.length ? " Finish them." : " Full house 💯"}`
+        : "No habits set yet — add a few from the Habits tab.";
     }
     if (/(gym|workout|fitness|train)/.test(str)) {
       const wk = store.workouts.filter((w) => w.ts >= Date.now() - 7 * 864e5).length;
       return `${wk} workout${wk === 1 ? "" : "s"} this week. Showing up is the win.`;
     }
-    if (/(focus|deep work)/.test(str)) return `You've logged ${log?.deepWork ?? 0}h of deep work today.`;
+    if (/(deep work|deep-work|focus time)/.test(str)) return `${log?.deepWork ?? 0}h deep work logged today.`;
     if (/(sleep)/.test(str)) return log ? `You slept ${log.sleep}h. ${log.sleep >= 7 ? "Nice." : "Aim for 7h+."}` : "No sleep logged today yet.";
     if (/(goal)/.test(str)) {
-      if (!store.goals.length) return "No goals set — add one in the Goals tab.";
+      if (!store.goals.length) return "No goals set — add one from the Goals tab.";
       const g = store.goals[0];
-      return `"${g.title}" is at ${Math.round((g.current / g.target) * 100)}%.`;
+      return `"${g.title}" is at ${Math.round((g.current / g.target) * 100)}% of target.`;
     }
-    if (/(hello|hey|hi|yo)/.test(str)) return "Hey — ask me about your score, streak, wins, money, habits or what to focus on.";
-    return "I can tell you your life score, streak, wins, money, habits, focus, sleep and what to work on. Try a chip.";
+    if (/(mood|energy|feel)/.test(str)) return log ? `Mood ${log.mood}/10 · Energy ${log.energy}/10 today.` : "Check in to log your mood.";
+    if (/(hello|hey|hi\b|yo\b)/.test(str)) return "Hey! Ask me about your score, streak, wins, habits, money, sleep — or what to focus on.";
+    return "I can help with your life score, streak, wins, habits, goals, sleep, money and focus. Try one of the quick buttons.";
   };
 
   const ask = (q: string) => {
     const text = q.trim();
     if (!text || typing) return;
-    const reply = answer(text);
     setMsgs((m) => [...m, { id: String(Date.now()), role: "user", text }]);
     setInput("");
     setTyping(true);
     setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 60);
+    const reply = answer(text);
     setTimeout(() => {
       setTyping(false);
       setMsgs((m) => [...m, { id: String(Date.now() + 1), role: "bot", text: reply }]);
       if (speakOn) { try { Speech.stop(); Speech.speak(reply, { rate: 1.0, pitch: 1.02 }); } catch { /* ignore */ } }
       setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 80);
-    }, 650);
+    }, 700);
   };
 
   const startVoice = () => {
     if (!voiceSupported || !VoiceCapture) {
-      setMsgs((m) => [
-        ...m,
-        { id: String(Date.now()), role: "bot", text: "Voice needs the full app build (run npx expo run:ios on your Mac). In Expo Go I'm text-only — but I still speak my replies." },
-      ]);
+      setMsgs((m) => [...m, { id: String(Date.now()), role: "bot", text: "Voice needs a dev build (npx expo run:ios on your Mac). I'm text-only in Expo Go, but I still speak replies." }]);
       return;
     }
     setTranscript("");
@@ -212,101 +218,131 @@ export default function OttoChat() {
     if (final) ask(final);
   };
 
-  const backdropOpacity = anim.interpolate({ inputRange: [0, 1], outputRange: [0, 1] });
-  const sheetTranslate = anim.interpolate({ inputRange: [0, 1], outputRange: [60, 0] });
-  const sheetScale = anim.interpolate({ inputRange: [0, 1], outputRange: [0.97, 1] });
-  const ringScale = pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.8] });
-  const ringOpacity = pulse.interpolate({ inputRange: [0, 1], outputRange: [0.35, 0] });
+  const ringScale = pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.9] });
+  const ringOpacity = pulse.interpolate({ inputRange: [0, 1], outputRange: [0.3, 0] });
+  const sheetY = sheetAnim.interpolate({ inputRange: [0, 1], outputRange: [SHEET_H, 0] });
 
   return (
     <>
-      {/* FAB with a soft pulse ring */}
-      <View pointerEvents="box-none" style={[s.fabWrap, { bottom: insets.bottom + 64 }]}>
+      {/* FAB */}
+      <View pointerEvents="box-none" style={[s.fabWrap, { bottom: insets.bottom + 68 }]}>
         <Animated.View style={[s.ring, { backgroundColor: c.ink, transform: [{ scale: ringScale }], opacity: ringOpacity }]} />
-        <PressableScale onPress={open} scaleTo={0.88} style={[s.fab, { backgroundColor: c.ink }]}>
-          <Ionicons name="sparkles" size={20} color={c.obsidian} />
+        <PressableScale onPress={openSheet} scaleTo={0.88} style={[s.fab, { backgroundColor: c.ink }]}>
+          <Ionicons name="sparkles" size={22} color={c.obsidian} />
         </PressableScale>
       </View>
 
-      <Modal visible={mounted} transparent statusBarTranslucent onRequestClose={close}>
-        <Animated.View style={[s.backdrop, { opacity: backdropOpacity }]}>
-          <Pressable style={{ flex: 1 }} onPress={close} />
+      <Modal visible={open} transparent animationType="none" statusBarTranslucent onRequestClose={closeSheet}>
+        {/* Backdrop */}
+        <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(0,0,0,0.55)", opacity: sheetAnim }]}>
+          <Pressable style={{ flex: 1 }} onPress={closeSheet} />
         </Animated.View>
-        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={s.sheetWrap} pointerEvents="box-none">
-          <Animated.View style={{ transform: [{ translateY: sheetTranslate }, { scale: sheetScale }], opacity: anim }}>
-            <BlurView intensity={isDark ? 50 : 70} tint={isDark ? "dark" : "light"} style={[s.sheet, { borderColor: c.line, paddingBottom: insets.bottom + 12 }]}>
-              {/* grabber */}
+
+        {/* Sheet — note: BlurView must NOT have overflow:hidden when animated.
+            We clip with an outer View instead to avoid the iOS render crash. */}
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          style={s.sheetWrap}
+          pointerEvents="box-none"
+        >
+          <Animated.View
+            style={[s.sheetOuter, { transform: [{ translateY: sheetY }], height: SHEET_H, paddingBottom: insets.bottom }]}
+          >
+            {/* The clip wrapper prevents blur bleed without being on BlurView itself */}
+            <View style={[s.clipWrap, { borderColor: c.line }]}>
+              <BlurView intensity={isDark ? 55 : 75} tint={isDark ? "dark" : "light"} style={StyleSheet.absoluteFill} />
+
+              {/* Grabber */}
               <View style={[s.grabber, { backgroundColor: c.lineStrong }]} />
-              {/* header */}
+
+              {/* Header */}
               <View style={[s.header, { borderBottomColor: c.line }]}>
                 <View style={s.headerLeft}>
                   <View style={[s.avatar, { backgroundColor: c.ink }]}>
-                    <Ionicons name="sparkles" size={15} color={c.obsidian} />
+                    <Ionicons name="sparkles" size={17} color={c.obsidian} />
                   </View>
                   <View>
-                    <Text style={s.headerTitle}>Otto</Text>
-                    <View style={s.onlineRow}>
-                      <View style={s.onlineDot} />
-                      <Text style={s.headerSub}>your coach</Text>
+                    <Text style={[s.headerTitle, { color: c.ink }]}>Otto</Text>
+                    <View style={s.statusRow}>
+                      <View style={s.statusDot} />
+                      <Text style={[s.headerSub, { color: c.inkFaint }]}>your life coach</Text>
                     </View>
                   </View>
                 </View>
-                <View style={s.headerActions}>
-                  <PressableScale onPress={() => setSpeakOn((v) => !v)} scaleTo={0.85} style={[s.headerBtn, { borderColor: c.line }]}>
-                    <Ionicons name={speakOn ? "volume-high" : "volume-mute"} size={16} color={speakOn ? c.ink : c.inkFaint} />
+                <View style={{ flexDirection: "row", gap: 8 }}>
+                  <PressableScale onPress={() => setSpeakOn((v) => !v)} scaleTo={0.88} style={[s.headerBtn, { borderColor: c.line }]}>
+                    <Ionicons name={speakOn ? "volume-high" : "volume-mute"} size={17} color={speakOn ? c.ink : c.inkFaint} />
                   </PressableScale>
-                  <PressableScale onPress={close} scaleTo={0.85} style={[s.headerBtn, { borderColor: c.line }]}>
-                    <Ionicons name="close" size={18} color={c.inkMuted} />
+                  <PressableScale onPress={closeSheet} scaleTo={0.88} style={[s.headerBtn, { borderColor: c.line }]}>
+                    <Ionicons name="close" size={19} color={c.inkMuted} />
                   </PressableScale>
                 </View>
               </View>
 
-              {/* messages */}
-              <ScrollView ref={scrollRef} style={{ maxHeight: 360 }} contentContainerStyle={{ padding: 16, gap: 10 }} keyboardShouldPersistTaps="handled">
+              {/* Messages — flex:1 so they fill all available space */}
+              <ScrollView
+                ref={scrollRef}
+                style={{ flex: 1 }}
+                contentContainerStyle={{ padding: 18, gap: 12, paddingBottom: 8 }}
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+              >
                 {msgs.map((m) => <Bubble key={m.id} m={m} c={c} />)}
                 {typing && <TypingDots c={c} />}
               </ScrollView>
 
-              {/* suggestions */}
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.sugRow} contentContainerStyle={{ gap: 8, paddingHorizontal: 12 }}>
+              {/* Quick reply chips */}
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={s.chips}
+                contentContainerStyle={{ gap: 8, paddingHorizontal: 16, paddingVertical: 10 }}
+              >
                 {SUGGESTIONS.map((sug) => (
-                  <PressableScale key={sug} onPress={() => ask(sug)} style={[s.sug, { borderColor: c.line, backgroundColor: c.fill }]}>
-                    <Text style={[s.sugText, { color: c.inkMuted }]}>{sug}</Text>
+                  <PressableScale key={sug} onPress={() => ask(sug)} style={[s.chip, { borderColor: c.line, backgroundColor: c.fill }]}>
+                    <Text style={[s.chipText, { color: c.inkMuted }]}>{sug}</Text>
                   </PressableScale>
                 ))}
               </ScrollView>
 
-              {/* input / voice */}
+              {/* Input row */}
               {listening ? (
-                <View style={[s.listening, { borderTopColor: c.line }]}>
+                <View style={[s.inputRow, { borderTopColor: c.line }]}>
                   {VoiceCapture && <VoiceCapture onTranscript={setTranscript} onDone={onVoiceDone} />}
                   <Text style={[s.listeningText, { color: transcript ? c.ink : c.inkFaint }]} numberOfLines={2}>
                     {transcript || "Listening… speak now"}
                   </Text>
-                  <PressableScale style={[s.send, { backgroundColor: c.ink }]} onPress={() => onVoiceDone(transcript)} scaleTo={0.9}>
-                    <Ionicons name="stop" size={16} color={c.obsidian} />
+                  <PressableScale style={[s.sendBtn, { backgroundColor: c.ink }]} onPress={() => onVoiceDone(transcript)} scaleTo={0.9}>
+                    <Ionicons name="stop" size={17} color={c.obsidian} />
                   </PressableScale>
                 </View>
               ) : (
                 <View style={[s.inputRow, { borderTopColor: c.line }]}>
-                  <PressableScale style={[s.mic, { borderColor: c.line, backgroundColor: c.fill }]} onPress={startVoice} scaleTo={0.9}>
-                    <Ionicons name="mic" size={18} color={c.inkMuted} />
+                  <PressableScale style={[s.micBtn, { borderColor: c.line, backgroundColor: c.fill }]} onPress={startVoice} scaleTo={0.9}>
+                    <Ionicons name="mic" size={20} color={c.inkMuted} />
                   </PressableScale>
                   <TextInput
                     value={input}
                     onChangeText={setInput}
-                    placeholder="Ask Otto…"
+                    placeholder="Ask Otto anything…"
                     placeholderTextColor={c.inkFaint}
-                    style={[s.input, { borderColor: c.line, backgroundColor: c.fill, color: c.ink }]}
+                    style={[s.textInput, { borderColor: c.line, backgroundColor: c.fill, color: c.ink }]}
                     returnKeyType="send"
                     onSubmitEditing={() => ask(input)}
+                    multiline
+                    maxLength={400}
                   />
-                  <PressableScale style={[s.send, { backgroundColor: c.ink }]} onPress={() => ask(input)} scaleTo={0.9}>
-                    <Ionicons name="arrow-up" size={18} color={c.obsidian} />
+                  <PressableScale
+                    style={[s.sendBtn, { backgroundColor: input.trim() ? c.ink : c.fillStrong }]}
+                    onPress={() => ask(input)}
+                    scaleTo={0.9}
+                    disabled={!input.trim()}
+                  >
+                    <Ionicons name="arrow-up" size={20} color={input.trim() ? c.obsidian : c.inkFaint} />
                   </PressableScale>
                 </View>
               )}
-            </BlurView>
+            </View>
           </Animated.View>
         </KeyboardAvoidingView>
       </Modal>
@@ -314,46 +350,38 @@ export default function OttoChat() {
   );
 }
 
+/* Bubble styles (shared) */
+const bs = StyleSheet.create({
+  user: { alignSelf: "flex-end", maxWidth: "85%", borderRadius: 20, borderBottomRightRadius: 5, paddingHorizontal: 16, paddingVertical: 11 },
+  bot: { alignSelf: "flex-start", maxWidth: "85%", borderRadius: 20, borderBottomLeftRadius: 5, borderWidth: 1, paddingHorizontal: 16, paddingVertical: 11 },
+  dotRow: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 18, paddingVertical: 16 },
+  dot: { width: 7, height: 7, borderRadius: 3.5 },
+});
+
 const makeStyles = (c: Palette) =>
   StyleSheet.create({
-    fabWrap: { position: "absolute", right: 16, width: 54, height: 54, alignItems: "center", justifyContent: "center" },
-    ring: { position: "absolute", width: 54, height: 54, borderRadius: 27 },
-    fab: {
-      width: 54, height: 54, borderRadius: 27, alignItems: "center", justifyContent: "center",
-      shadowColor: "#000", shadowOpacity: 0.4, shadowRadius: 16, shadowOffset: { width: 0, height: 8 }, elevation: 8,
-    },
-    backdrop: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.55)" },
+    fabWrap: { position: "absolute", right: 18, width: 58, height: 58, alignItems: "center", justifyContent: "center" },
+    ring: { position: "absolute", width: 58, height: 58, borderRadius: 29 },
+    fab: { width: 58, height: 58, borderRadius: 29, alignItems: "center", justifyContent: "center", shadowColor: "#000", shadowOpacity: 0.35, shadowRadius: 18, shadowOffset: { width: 0, height: 8 }, elevation: 8 },
     sheetWrap: { flex: 1, justifyContent: "flex-end" },
-    sheet: {
-      borderTopLeftRadius: 28, borderTopRightRadius: 28, borderWidth: 1, overflow: "hidden",
-      shadowColor: "#000", shadowOpacity: 0.5, shadowRadius: 30, shadowOffset: { width: 0, height: -10 },
-    },
-    grabber: { alignSelf: "center", width: 38, height: 4, borderRadius: 2, marginTop: 8, marginBottom: 4, opacity: 0.6 },
-    header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1 },
-    headerLeft: { flexDirection: "row", alignItems: "center", gap: 11 },
-    avatar: { width: 34, height: 34, borderRadius: 11, alignItems: "center", justifyContent: "center" },
-    headerTitle: { fontFamily: fonts.displayBold, fontSize: 16, color: c.ink },
-    onlineRow: { flexDirection: "row", alignItems: "center", gap: 5, marginTop: 1 },
-    onlineDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: "#3fcf6e" },
-    headerSub: { fontFamily: fonts.body, fontSize: 12, color: c.inkFaint },
-    headerActions: { flexDirection: "row", gap: 8 },
-    headerBtn: { width: 34, height: 34, borderRadius: radius.sm, borderWidth: 1, alignItems: "center", justifyContent: "center" },
-    bubbleUser: { alignSelf: "flex-end", maxWidth: "84%", borderRadius: 18, borderBottomRightRadius: 6, paddingHorizontal: 14, paddingVertical: 10 },
-    bubbleBot: { alignSelf: "flex-start", maxWidth: "84%", borderRadius: 18, borderBottomLeftRadius: 6, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 10 },
-    typing: { flexDirection: "row", alignItems: "center", gap: 5, paddingVertical: 13 },
-    sugRow: { paddingVertical: 8 },
-    sug: { borderWidth: 1, borderRadius: radius.pill, paddingHorizontal: 13, paddingVertical: 7 },
-    sugText: { fontFamily: fonts.bodyMedium, fontSize: 12 },
-    inputRow: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 12, paddingTop: 10, borderTopWidth: 1 },
-    input: { flex: 1, borderWidth: 1, borderRadius: radius.pill, paddingHorizontal: 16, paddingVertical: 11, fontFamily: fonts.body, fontSize: 14 },
-    send: { width: 42, height: 42, borderRadius: 21, alignItems: "center", justifyContent: "center" },
-    mic: { width: 42, height: 42, borderRadius: 21, borderWidth: 1, alignItems: "center", justifyContent: "center" },
-    listening: { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 14, paddingTop: 12, borderTopWidth: 1 },
-    listeningText: { flex: 1, fontFamily: fonts.bodyMedium, fontSize: 14 },
+    sheetOuter: { justifyContent: "flex-end" },
+    // Clip wrapper — carries borderRadius + overflow:hidden so BlurView doesn't need it.
+    clipWrap: { flex: 1, borderTopLeftRadius: 26, borderTopRightRadius: 26, borderWidth: 1, overflow: "hidden" },
+    grabber: { alignSelf: "center", width: 40, height: 4, borderRadius: 2, marginTop: 10, marginBottom: 2, opacity: 0.5 },
+    header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 18, paddingVertical: 14, borderBottomWidth: StyleSheet.hairlineWidth },
+    headerLeft: { flexDirection: "row", alignItems: "center", gap: 12 },
+    avatar: { width: 40, height: 40, borderRadius: 13, alignItems: "center", justifyContent: "center" },
+    headerTitle: { fontFamily: fonts.displayBold, fontSize: 17 },
+    statusRow: { flexDirection: "row", alignItems: "center", gap: 5, marginTop: 2 },
+    statusDot: { width: 7, height: 7, borderRadius: 3.5, backgroundColor: "#3fcf6e" },
+    headerSub: { fontFamily: fonts.body, fontSize: 12 },
+    headerBtn: { width: 36, height: 36, borderRadius: radius.sm, borderWidth: 1, alignItems: "center", justifyContent: "center" },
+    chips: { flexShrink: 0 },
+    chip: { borderWidth: 1, borderRadius: radius.pill, paddingHorizontal: 14, paddingVertical: 8 },
+    chipText: { fontFamily: fonts.bodyMedium, fontSize: 13 },
+    inputRow: { flexDirection: "row", alignItems: "flex-end", gap: 10, paddingHorizontal: 14, paddingTop: 12, paddingBottom: 10, borderTopWidth: StyleSheet.hairlineWidth },
+    micBtn: { width: 46, height: 46, borderRadius: 23, borderWidth: 1, alignItems: "center", justifyContent: "center" },
+    textInput: { flex: 1, borderWidth: 1, borderRadius: 22, paddingHorizontal: 18, paddingTop: 12, paddingBottom: 12, fontFamily: fonts.body, fontSize: 15, maxHeight: 120 },
+    sendBtn: { width: 46, height: 46, borderRadius: 23, alignItems: "center", justifyContent: "center" },
+    listeningText: { flex: 1, fontFamily: fonts.bodyMedium, fontSize: 15, paddingVertical: 12 },
   });
-
-const styles = StyleSheet.create({
-  bubbleUser: { alignSelf: "flex-end", maxWidth: "84%", borderRadius: 18, borderBottomRightRadius: 6, paddingHorizontal: 14, paddingVertical: 10 },
-  bubbleBot: { alignSelf: "flex-start", maxWidth: "84%", borderRadius: 18, borderBottomLeftRadius: 6, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 10 },
-  typing: { flexDirection: "row", alignItems: "center", gap: 5, paddingVertical: 13 },
-});
