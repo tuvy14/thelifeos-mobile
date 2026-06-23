@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { View, Text, Pressable, StyleSheet, ActivityIndicator } from "react-native";
+import { View, Text, StyleSheet, ActivityIndicator, useWindowDimensions } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router, type Href } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -8,6 +8,7 @@ import { Screen } from "@/components/screen";
 import { Card, Eyebrow, IconBadge, Field } from "@/components/ui";
 import { PressableScale, Reveal } from "@/components/anim";
 import ScoreRing from "@/components/score-ring";
+import SelectMenu, { type SelectOption } from "@/components/select-menu";
 import { useTheme, radius, fonts } from "@/lib/theme";
 import {
   useStore,
@@ -16,9 +17,22 @@ import {
   streak,
   winsToday,
   getFocuses,
+  activeMode,
   FOCUS_AREAS,
 } from "@/lib/store";
 import { useCelebrate } from "@/lib/celebrate";
+
+// Ionicon per focus area, for the mode switcher dropdown.
+const FOCUS_ICON: Record<string, keyof typeof Ionicons.glyphMap> = {
+  fitness: "barbell",
+  focus: "flash",
+  business: "briefcase",
+  creator: "videocam",
+  money: "cash",
+  mind: "leaf",
+  habits: "repeat",
+  learn: "book",
+};
 
 const VIEW_ROUTE: Record<string, Href> = {
   checkin: "/check-in",
@@ -34,10 +48,15 @@ const VIEW_ROUTE: Record<string, Href> = {
 const routeFor = (view: string): Href => VIEW_ROUTE[view] ?? "/check-in";
 
 export default function TodayScreen() {
-  const { ready, logs, wins, profile, addWin } = useStore();
+  const { ready, logs, wins, profile, mode, addWin, setActiveMode } = useStore();
   const { celebrate } = useCelebrate();
   const { c } = useTheme();
+  const { width } = useWindowDimensions();
   const [winInput, setWinInput] = useState("");
+
+  // Responsive hero sizing so it never overflows on narrow phones.
+  const compact = width < 380;
+  const ringSize = compact ? 100 : 120;
 
   // Celebrate streak milestones once each (mirrors web lifeos:celebrate).
   useEffect(() => {
@@ -67,6 +86,17 @@ export default function TodayScreen() {
   const todays = winsToday(wins);
   const myFocus = FOCUS_AREAS.filter((f) => getFocuses(profile).includes(f.id));
 
+  // Focus-mode switcher (the morphing dropdown). Falls back to all areas.
+  const modeAreas = myFocus.length > 0 ? myFocus : FOCUS_AREAS;
+  const curMode = activeMode(mode, profile);
+  const modeOptions: SelectOption[] = modeAreas.map((f) => ({
+    id: f.id,
+    value: f.id,
+    label: f.label,
+    description: f.description,
+    icon: <Ionicons name={FOCUS_ICON[f.id] ?? "ellipse-outline"} size={15} color={c.ink} />,
+  }));
+
   const label =
     score >= 80 ? "Crushing it" : score >= 55 ? "On track" : score >= 30 ? "Getting there" : "Start the day";
   const heroMsg = !log
@@ -92,12 +122,24 @@ export default function TodayScreen() {
 
   return (
     <Screen>
+      {/* Focus-mode switcher */}
+      <Reveal delay={0} style={styles.modeRow}>
+        <Text style={[styles.modeLabel, { color: c.inkFaint }]}>FOCUS MODE</Text>
+        <SelectMenu
+          title="Switch focus mode"
+          data={modeOptions}
+          value={curMode}
+          onChange={setActiveMode}
+        />
+      </Reveal>
+
       {/* Hero */}
-      <Card padding={24} rounded={radius.xl} style={styles.hero}>
-        <ScoreRing score={score} size={128} />
+      <Reveal delay={70}>
+      <Card padding={compact ? 18 : 24} rounded={radius.xl} style={[styles.hero, compact && { gap: 14 }]}>
+        <ScoreRing score={score} size={ringSize} />
         <View style={styles.heroRight}>
           <Eyebrow>Life score · today</Eyebrow>
-          <Text style={[styles.h2, { color: c.ink }]}>{label}</Text>
+          <Text style={[styles.h2, { color: c.ink, fontSize: compact ? 21 : 26 }]} numberOfLines={1} adjustsFontSizeToFit>{label}</Text>
           <Text style={[styles.heroMsg, { color: c.inkMuted }]}>{heroMsg}</Text>
           <View style={styles.chipRow}>
             <View
@@ -125,10 +167,12 @@ export default function TodayScreen() {
           )}
         </View>
       </Card>
+      </Reveal>
 
       {/* Your focus */}
       {myFocus.length > 0 && (
-        <Card style={{ marginTop: 16 }}>
+        <Reveal delay={90} style={{ marginTop: 16 }}>
+        <Card>
           <View style={styles.rowCenter}>
             <Ionicons name="locate-outline" size={15} color={c.inkMuted} />
             <Text style={[styles.sectionLabel, { color: c.inkMuted }]}>YOUR FOCUS</Text>
@@ -146,11 +190,13 @@ export default function TodayScreen() {
             ))}
           </View>
         </Card>
+        </Reveal>
       )}
 
       {/* Today's focus intention */}
       {log?.intention ? (
-        <Card style={{ marginTop: 16 }} padding={16}>
+        <Reveal delay={140} style={{ marginTop: 16 }}>
+        <Card padding={16}>
           <View style={styles.rowCenter}>
             <IconBadge name="locate-outline" />
             <View style={{ flex: 1 }}>
@@ -159,6 +205,7 @@ export default function TodayScreen() {
             </View>
           </View>
         </Card>
+        </Reveal>
       ) : null}
 
       {/* Metrics */}
@@ -175,7 +222,8 @@ export default function TodayScreen() {
       </View>
 
       {/* Small wins */}
-      <Card style={{ marginTop: 16 }} padding={20}>
+      <Reveal delay={420} style={{ marginTop: 16 }}>
+      <Card padding={20}>
         <View style={styles.winsHead}>
           <View>
             <Text style={[styles.cardTitle, { color: c.ink }]}>Small wins</Text>
@@ -211,12 +259,15 @@ export default function TodayScreen() {
           </View>
         )}
       </Card>
+      </Reveal>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
   loading: { flex: 1, alignItems: "center", justifyContent: "center" },
+  modeRow: { flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 14 },
+  modeLabel: { fontFamily: fonts.bodyBold, fontSize: 11, letterSpacing: 1.2 },
   hero: { flexDirection: "row", alignItems: "center", gap: 18 },
   heroRight: { flex: 1 },
   h2: { fontFamily: fonts.displayBold, fontSize: 26, letterSpacing: -0.6, marginTop: 8 },

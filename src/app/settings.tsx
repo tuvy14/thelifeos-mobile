@@ -10,7 +10,7 @@ import { useStore } from "@/lib/store";
 import { useSync } from "@/lib/sync";
 
 export default function SettingsScreen() {
-  const { logs, wins, habits, goals, journal, workouts, revenue, expenses, calendar, resetAll, resetOnboarding } = useStore();
+  const { logs, wins, habits, goals, journal, workouts, revenue, expenses, calendar, profile, resetAll, resetOnboarding } = useStore();
   const { c, isDark, toggle } = useTheme();
   const { configured, email, status } = useSync();
   const s = makeStyles(c);
@@ -58,6 +58,18 @@ export default function SettingsScreen() {
         <View style={[s.toggle, { backgroundColor: isDark ? c.fillStrong : c.ink }]}>
           <View style={[s.knob, { backgroundColor: isDark ? c.ink : c.obsidian, alignSelf: isDark ? "flex-start" : "flex-end" }]} />
         </View>
+      </PressableScale>
+
+      <Text style={s.section}>PLAN</Text>
+      <PressableScale style={[s.row, !profile?.admin && { borderColor: c.ink }]} onPress={() => router.navigate("/upgrade")}>
+        <View style={[s.icon, { borderColor: profile?.admin ? c.line : c.ink, backgroundColor: profile?.admin ? c.fill : c.ink }]}>
+          <Ionicons name="sparkles" size={18} color={profile?.admin ? c.ink : c.obsidian} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={s.rowTitle}>{profile?.admin ? "TheLifeOS Pro" : "Upgrade to Pro"}</Text>
+          <Text style={s.rowSub}>{profile?.admin ? "Lifetime access · active" : "Lifetime $300 · or $20/mo"}</Text>
+        </View>
+        <Ionicons name="chevron-forward" size={18} color={c.inkFaint} />
       </PressableScale>
 
       <Text style={s.section}>SYNC</Text>

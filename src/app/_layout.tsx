@@ -25,6 +25,10 @@ import { CelebrationProvider } from "@/lib/celebrate";
 import Onboarding from "@/components/onboarding";
 import OttoChat from "@/components/otto-chat";
 import Splash from "@/components/splash";
+import CinematicIntro from "@/components/cinematic-intro";
+
+// Plays the cinematic intro once per cold start (resets on a full app reload).
+let introSeen = false;
 
 function Shell() {
   const { c, isDark } = useTheme();
@@ -32,6 +36,9 @@ function Shell() {
   // Capture the onboarding decision once hydration finishes, so completing the
   // flow (which sets profile) doesn't dismiss the overlay before "ready".
   const [onboarding, setOnboarding] = useState<boolean | null>(null);
+  // Self-playing intro overlays everything (even the loading splash) on launch.
+  const [intro, setIntro] = useState(!introSeen);
+  const dismissIntro = () => { introSeen = true; setIntro(false); };
   useEffect(() => {
     // Show whenever there's no profile (first run OR "redo onboarding"). Completing
     // the flow sets the profile but we keep the overlay until onDone fires.
@@ -39,26 +46,36 @@ function Shell() {
   }, [ready, profile]);
   const showOnboarding = onboarding === true;
 
-  // Branded loading screen until local data has hydrated.
-  if (!ready) return <Splash />;
-
   return (
     <View style={{ flex: 1, backgroundColor: c.obsidian }}>
       <StatusBar style={isDark ? "light" : "dark"} />
-      {/* Each screen paints its own opaque base + shader behind its content, so
-          sibling tab screens never bleed through. */}
-      <Stack
-        screenOptions={{
-          headerShown: false,
-          contentStyle: { backgroundColor: c.obsidian },
-        }}
-      />
-      {/* Otto coach FAB — hidden during onboarding. */}
-      {ready && !showOnboarding && <OttoChat />}
-      {/* First-run focus-area onboarding overlays the app until completed. */}
-      {showOnboarding && (
+      {!ready ? (
+        // Branded loading screen until local data has hydrated.
+        <Splash />
+      ) : (
+        <>
+          {/* Each screen paints its own opaque base + shader behind its content, so
+              sibling tab screens never bleed through. */}
+          <Stack
+            screenOptions={{
+              headerShown: false,
+              contentStyle: { backgroundColor: c.obsidian },
+            }}
+          />
+          {/* Otto coach FAB — hidden during onboarding/intro. */}
+          {!showOnboarding && !intro && <OttoChat />}
+          {/* First-run focus-area onboarding overlays the app until completed. */}
+          {showOnboarding && (
+            <View style={StyleSheet.absoluteFill}>
+              <Onboarding onDone={() => setOnboarding(false)} />
+            </View>
+          )}
+        </>
+      )}
+      {/* Cinematic auto-intro sits above everything, including the splash. */}
+      {intro && (
         <View style={StyleSheet.absoluteFill}>
-          <Onboarding onDone={() => setOnboarding(false)} />
+          <CinematicIntro onDone={dismissIntro} />
         </View>
       )}
     </View>

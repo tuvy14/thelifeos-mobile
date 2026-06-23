@@ -80,6 +80,16 @@ export default function MoreScreen() {
 
       {/* Account + settings */}
       <View style={{ marginTop: 22, gap: 10 }}>
+        {!profile?.admin && (
+          <PressableScale style={[s.wideRow, { borderColor: c.ink }]} onPress={() => router.navigate("/upgrade")}>
+            <View style={[s.tileIcon, { borderColor: c.ink, backgroundColor: c.ink }]}><Ionicons name="sparkles" size={17} color={c.obsidian} /></View>
+            <View style={{ flex: 1 }}>
+              <Text style={s.wideTitle}>Upgrade to Pro</Text>
+              <Text style={s.wideSub}>Lifetime $300 · or $20/mo</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={c.inkFaint} />
+          </PressableScale>
+        )}
         <PressableScale style={s.wideRow} onPress={() => router.navigate("/referrals")}>
           <View style={[s.tileIcon, { borderColor: c.line, backgroundColor: c.fill }]}><Ionicons name="gift-outline" size={17} color={c.ink} /></View>
           <View style={{ flex: 1 }}>
