@@ -1,12 +1,33 @@
 import { useEffect, useRef, useState } from "react";
-import { Animated, ScrollView, View, Text, TextInput, Pressable, StyleSheet } from "react-native";
+import { ActivityIndicator, Animated, ScrollView, View, Text, TextInput, Pressable, Platform, StyleSheet } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import * as WebBrowser from "expo-web-browser";
+import * as Linking from "expo-linking";
 
 import { useTheme, radius, fonts, type Palette } from "@/lib/theme";
 import { useStore, FOCUS_AREAS } from "@/lib/store";
+import { getSupabase } from "@/lib/supabase";
 import Logo from "@/components/logo";
 import QuantumLoader from "@/components/quantum-loader";
+
+WebBrowser.maybeCompleteAuthSession();
+
+/** Built-in admin passphrase — unlocks the full app + premium instantly.
+ *  Change this to your own before shipping; it lives in the bundle so it's
+ *  convenience access, not a real secret. */
+const ADMIN_PASSWORD = "LifeOS-Admin-2026";
+
+/** Pull a param out of an OAuth redirect URL (PKCE uses ?query, implicit uses #fragment). */
+function urlParam(url: string, key: string, where: "query" | "fragment"): string | null {
+  const seg = where === "query" ? url.split("#")[0].split("?")[1] : url.split("#")[1];
+  if (!seg) return null;
+  try {
+    return new URLSearchParams(seg).get(key);
+  } catch {
+    return null;
+  }
+}
 
 const FOCUS_ICON: Record<string, keyof typeof Ionicons.glyphMap> = {
   fitness: "barbell-outline", focus: "timer-outline", business: "trending-up-outline",
@@ -80,6 +101,77 @@ export default function Onboarding({ onDone }: { onDone: () => void }) {
   const [subMsg, setSubMsg] = useState(0);
   const savedRef = useRef(false);
 
+  // Auth (Apple / Google / admin) on the welcome step.
+  const [busy, setBusy] = useState<null | "apple" | "google" | "admin">(null);
+  const [note, setNote] = useState<string | null>(null);
+  const [adminOpen, setAdminOpen] = useState(false);
+  const [adminPw, setAdminPw] = useState("");
+
+  // Authed in via a provider/admin → drop a minimal local profile so the gate
+  // opens, then enter. Cloud sync (if a returning user) overlays the real data.
+  const enterApp = (nm?: string, admin?: boolean) => {
+    if (!savedRef.current) {
+      savedRef.current = true;
+      completeOnboarding(
+        nm || name || (admin ? "Admin" : ""),
+        admin ? FOCUS_AREAS.map((f) => f.id) : selected.length ? selected : ["habits"],
+        admin ? { admin: true } : {}
+      );
+    }
+    onDone();
+  };
+
+  const oauth = async (provider: "apple" | "google") => {
+    const sb = getSupabase();
+    if (!sb) {
+      setNote("Cloud login isn't set up yet — add your Supabase keys, or continue with your name above.");
+      return;
+    }
+    setNote(null);
+    setBusy(provider);
+    try {
+      const redirectTo = Linking.createURL("auth-callback");
+      const { data, error } = await sb.auth.signInWithOAuth({
+        provider,
+        options: { redirectTo, skipBrowserRedirect: true },
+      });
+      if (error || !data?.url) throw new Error(error?.message || "Couldn't start sign-in.");
+      const res = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
+      if (res.type !== "success" || !res.url) {
+        setBusy(null);
+        return; // user cancelled
+      }
+      const code = urlParam(res.url, "code", "query");
+      if (code) {
+        const { error: ce } = await sb.auth.exchangeCodeForSession(code);
+        if (ce) throw new Error(ce.message);
+      } else {
+        const access_token = urlParam(res.url, "access_token", "fragment");
+        const refresh_token = urlParam(res.url, "refresh_token", "fragment");
+        if (!access_token || !refresh_token) throw new Error("Sign-in didn't complete.");
+        const { error: se } = await sb.auth.setSession({ access_token, refresh_token });
+        if (se) throw new Error(se.message);
+      }
+      const { data: u } = await sb.auth.getUser();
+      const meta = (u.user?.user_metadata ?? {}) as { full_name?: string; name?: string };
+      const nm = (meta.full_name || meta.name || "").trim().split(" ")[0] || undefined;
+      setBusy(null);
+      enterApp(nm);
+    } catch (e) {
+      setBusy(null);
+      setNote(e instanceof Error ? e.message : "Sign-in failed. Try again.");
+    }
+  };
+
+  const submitAdmin = () => {
+    if (adminPw !== ADMIN_PASSWORD) {
+      setNote("That admin password isn't right.");
+      return;
+    }
+    setNote(null);
+    enterApp(undefined, true);
+  };
+
   const fade = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     fade.setValue(0);
@@ -120,12 +212,25 @@ export default function Onboarding({ onDone }: { onDone: () => void }) {
     </Pressable>
   );
 
+  // Short steps look best vertically centred; tall steps (the goal list and the
+  // question lists) MUST top-align — centring a list taller than the viewport in
+  // a ScrollView makes the top unreachable, which is why scroll felt broken.
+  const centerStep = step === "welcome" || step === "generating" || step === "ready";
+
   return (
     <View style={{ flex: 1, backgroundColor: c.obsidian }}>
       <ScrollView
-        contentContainerStyle={{ flexGrow: 1, justifyContent: "center", paddingTop: insets.top + 24, paddingHorizontal: 24, paddingBottom: insets.bottom + 32 }}
+        style={{ flex: 1 }}
+        contentContainerStyle={{
+          flexGrow: 1,
+          justifyContent: centerStep ? "center" : "flex-start",
+          paddingTop: insets.top + (centerStep ? 24 : 18),
+          paddingHorizontal: 24,
+          paddingBottom: insets.bottom + 40,
+        }}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
+        bounces
       >
         {showDots && (
           <View style={s.dots}>
@@ -142,10 +247,47 @@ export default function Onboarding({ onDone }: { onDone: () => void }) {
               <Text style={s.h1}>Welcome to TheLifeOS</Text>
               <Text style={s.lead}>Answer a few quick questions and we&apos;ll build a personal plan around your life. Takes about a minute.</Text>
               <TextInput
-                value={name} onChangeText={setName} placeholder="Your first name (optional)" placeholderTextColor={c.inkFaint}
-                style={s.nameInput} textAlign="center"
+                value={name} onChangeText={setName} placeholder="Your first name" placeholderTextColor={c.inkFaint}
+                style={s.nameInput} textAlign="center" returnKeyType="next" onSubmitEditing={() => name.trim() && next()}
               />
-              {cta("Let's go", next)}
+              {cta("Let's go", next, !name.trim())}
+
+              <View style={s.divider}>
+                <View style={[s.divLine, { backgroundColor: c.line }]} />
+                <Text style={s.divText}>or sign in</Text>
+                <View style={[s.divLine, { backgroundColor: c.line }]} />
+              </View>
+
+              {Platform.OS === "ios" && (
+                <Pressable onPress={() => oauth("apple")} disabled={!!busy} style={[s.social, { borderColor: c.line, backgroundColor: c.card }]}>
+                  {busy === "apple" ? <ActivityIndicator color={c.ink} /> : <Ionicons name="logo-apple" size={19} color={c.ink} />}
+                  <Text style={s.socialText}>Continue with Apple</Text>
+                </Pressable>
+              )}
+              <Pressable onPress={() => oauth("google")} disabled={!!busy} style={[s.social, { borderColor: c.line, backgroundColor: c.card }]}>
+                {busy === "google" ? <ActivityIndicator color={c.ink} /> : <Ionicons name="logo-google" size={18} color={c.ink} />}
+                <Text style={s.socialText}>Continue with Google</Text>
+              </Pressable>
+
+              {!adminOpen ? (
+                <Pressable onPress={() => { setAdminOpen(true); setNote(null); }} style={s.adminLink}>
+                  <Ionicons name="shield-checkmark-outline" size={13} color={c.inkFaint} />
+                  <Text style={s.adminLinkText}>Admin login</Text>
+                </Pressable>
+              ) : (
+                <View style={s.adminBox}>
+                  <TextInput
+                    value={adminPw} onChangeText={setAdminPw} placeholder="Admin password" placeholderTextColor={c.inkFaint}
+                    style={s.adminInput} secureTextEntry autoCapitalize="none" autoCorrect={false}
+                    returnKeyType="done" onSubmitEditing={submitAdmin}
+                  />
+                  <Pressable onPress={submitAdmin} style={[s.adminGo, { backgroundColor: c.ink }]}>
+                    <Ionicons name="arrow-forward" size={16} color={c.obsidian} />
+                  </Pressable>
+                </View>
+              )}
+
+              {note && <Text style={s.note}>{note}</Text>}
             </View>
           )}
 
@@ -264,6 +406,17 @@ const makeStyles = (c: Palette) =>
     check: { width: 22, height: 22, borderRadius: 11, borderWidth: 1, alignItems: "center", justifyContent: "center" },
     cta: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, borderRadius: radius.lg, paddingVertical: 16, marginTop: 26, alignSelf: "stretch" },
     ctaText: { fontFamily: fonts.displayBold, fontSize: 15 },
+    divider: { flexDirection: "row", alignItems: "center", gap: 12, alignSelf: "stretch", marginTop: 22, marginBottom: 16 },
+    divLine: { flex: 1, height: 1 },
+    divText: { fontFamily: fonts.mono, fontSize: 11, letterSpacing: 1, color: c.inkFaint, textTransform: "uppercase" },
+    social: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, borderWidth: 1, borderRadius: radius.lg, paddingVertical: 14, alignSelf: "stretch", marginTop: 10 },
+    socialText: { fontFamily: fonts.bodySemibold, fontSize: 14.5, color: c.ink },
+    adminLink: { flexDirection: "row", alignItems: "center", gap: 6, alignSelf: "center", marginTop: 20, padding: 6 },
+    adminLinkText: { fontFamily: fonts.body, fontSize: 12.5, color: c.inkFaint },
+    adminBox: { flexDirection: "row", alignItems: "center", gap: 8, alignSelf: "stretch", marginTop: 18 },
+    adminInput: { flex: 1, borderWidth: 1, borderColor: c.line, backgroundColor: c.fill, borderRadius: radius.lg, paddingHorizontal: 16, paddingVertical: 13, color: c.ink, fontFamily: fonts.body, fontSize: 15 },
+    adminGo: { width: 48, height: 48, borderRadius: radius.lg, alignItems: "center", justifyContent: "center" },
+    note: { fontFamily: fonts.body, fontSize: 12.5, color: c.inkMuted, lineHeight: 18, textAlign: "center", marginTop: 16, maxWidth: 360 },
     backBtn: { alignSelf: "center", marginTop: 16, padding: 6 },
     backText: { fontFamily: fonts.body, fontSize: 12, color: c.inkFaint },
     genSub: { fontFamily: fonts.displayBold, fontSize: 18, color: c.ink, marginTop: 20 },

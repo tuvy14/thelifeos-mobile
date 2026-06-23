@@ -69,7 +69,7 @@ export interface Referral {
 }
 export interface Profile {
   name?: string; focuses: string[]; challenge?: string; dailyTime?: string;
-  level?: string; rhythm?: string; onboardedAt: number;
+  level?: string; rhythm?: string; onboardedAt: number; admin?: boolean;
 }
 
 /* ── Constants (mirror web) ── */
@@ -269,7 +269,7 @@ interface Store {
   addReferral: (name: string) => void;
   // onboarding / mode
   setActiveMode: (id: string) => void;
-  completeOnboarding: (name: string, focusIds: string[], extras?: Partial<Pick<Profile, "challenge" | "dailyTime" | "level" | "rhythm">>) => void;
+  completeOnboarding: (name: string, focusIds: string[], extras?: Partial<Pick<Profile, "challenge" | "dailyTime" | "level" | "rhythm" | "admin">>) => void;
   resetOnboarding: () => void;
   // sync bridge + utility
   exportRaw: () => Record<string, string>;
@@ -518,7 +518,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   /* ── onboarding / mode ── */
   const setActiveMode = useCallback((id: string) => { setMode(id); persist(K.mode, id); }, []);
   const completeOnboarding = useCallback(
-    (name: string, focusIds: string[], extras: Partial<Pick<Profile, "challenge" | "dailyTime" | "level" | "rhythm">> = {}) => {
+    (name: string, focusIds: string[], extras: Partial<Pick<Profile, "challenge" | "dailyTime" | "level" | "rhythm" | "admin">> = {}) => {
       const chosen = FOCUS_AREAS.filter((f) => focusIds.includes(f.id));
       setGoals((cur) => {
         const next = [...cur];
