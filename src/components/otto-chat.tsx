@@ -1,20 +1,24 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Modal,
   View,
   Text,
   TextInput,
-  Pressable,
+  Animated,
+  Easing,
   ScrollView,
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
 } from "react-native";
+import { BlurView } from "expo-blur";
+import * as Speech from "expo-speech";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 
 import { useTheme, radius, fonts, type Palette } from "@/lib/theme";
-import { PressableScale } from "@/components/anim";
+import { PressableScale, EASE } from "@/components/anim";
 import {
   useStore,
   scoreFor,
@@ -24,20 +28,102 @@ import {
   monthRevenue,
 } from "@/lib/store";
 
-interface Msg { role: "bot" | "user"; text: string }
+interface Msg { id: string; role: "bot" | "user"; text: string }
 const SUGGESTIONS = ["How am I doing?", "What should I focus on?", "How much did I earn?", "My streak?"];
+
+/* ── Bubble that animates in on mount ── */
+function Bubble({ m, c }: { m: Msg; c: Palette }) {
+  const v = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(v, { toValue: 1, duration: 320, easing: EASE, useNativeDriver: true }).start();
+  }, [v]);
+  const style = {
+    opacity: v,
+    transform: [{ translateY: v.interpolate({ inputRange: [0, 1], outputRange: [10, 0] }) }],
+  };
+  if (m.role === "user") {
+    return (
+      <Animated.View style={[style, styles.bubbleUser, { backgroundColor: c.ink }]}>
+        <Text style={{ color: c.obsidian, fontFamily: fonts.body, fontSize: 14, lineHeight: 20 }}>{m.text}</Text>
+      </Animated.View>
+    );
+  }
+  return (
+    <Animated.View style={[style, styles.bubbleBot, { backgroundColor: c.fill, borderColor: c.line }]}>
+      <Text style={{ color: c.ink, fontFamily: fonts.body, fontSize: 14, lineHeight: 20 }}>{m.text}</Text>
+    </Animated.View>
+  );
+}
+
+/* ── "Otto is thinking" bouncing dots ── */
+function TypingDots({ c }: { c: Palette }) {
+  const dots = [useRef(new Animated.Value(0)).current, useRef(new Animated.Value(0)).current, useRef(new Animated.Value(0)).current];
+  useEffect(() => {
+    const anims = dots.map((d, i) =>
+      Animated.loop(
+        Animated.sequence([
+          Animated.delay(i * 140),
+          Animated.timing(d, { toValue: 1, duration: 320, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+          Animated.timing(d, { toValue: 0, duration: 320, easing: Easing.in(Easing.quad), useNativeDriver: true }),
+          Animated.delay((2 - i) * 140),
+        ])
+      )
+    );
+    anims.forEach((a) => a.start());
+    return () => anims.forEach((a) => a.stop());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  return (
+    <View style={[styles.bubbleBot, styles.typing, { backgroundColor: c.fill, borderColor: c.line }]}>
+      {dots.map((d, i) => (
+        <Animated.View
+          key={i}
+          style={{
+            width: 6, height: 6, borderRadius: 3, backgroundColor: c.inkMuted,
+            transform: [{ translateY: d.interpolate({ inputRange: [0, 1], outputRange: [0, -5] }) }],
+            opacity: d.interpolate({ inputRange: [0, 1], outputRange: [0.4, 1] }),
+          }}
+        />
+      ))}
+    </View>
+  );
+}
 
 export default function OttoChat() {
   const store = useStore();
-  const { c } = useTheme();
+  const { c, isDark } = useTheme();
   const s = makeStyles(c);
   const insets = useSafeAreaInsets();
-  const [open, setOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const [input, setInput] = useState("");
+  const [typing, setTyping] = useState(false);
+  const [speakOn, setSpeakOn] = useState(true);
   const [msgs, setMsgs] = useState<Msg[]>([
-    { role: "bot", text: "Hey — I'm your TheLifeOS coach. Ask me anything about your day." },
+    { id: "intro", role: "bot", text: "Hey — I'm Otto, your TheLifeOS coach. Ask me anything about your day." },
   ]);
   const scrollRef = useRef<ScrollView>(null);
+  const anim = useRef(new Animated.Value(0)).current;
+  const pulse = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, { toValue: 1, duration: 1600, easing: Easing.out(Easing.ease), useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 0, duration: 0, useNativeDriver: true }),
+      ])
+    ).start();
+  }, [pulse]);
+
+  const open = () => {
+    setMounted(true);
+    Animated.spring(anim, { toValue: 1, useNativeDriver: true, friction: 9, tension: 70 }).start();
+  };
+  const close = () => {
+    try { Speech.stop(); } catch { /* ignore */ }
+    Animated.timing(anim, { toValue: 0, duration: 220, easing: EASE, useNativeDriver: true }).start(({ finished }) => {
+      if (finished) setMounted(false);
+    });
+  };
 
   const answer = (q: string): string => {
     const str = q.toLowerCase();
@@ -45,7 +131,6 @@ export default function OttoChat() {
     const score = scoreFor(log);
     const stk = streak(store.logs);
     const winsT = winsToday(store.wins).length;
-
     if (/(focus on|what should|advice|improve)/.test(str)) {
       if (!log) return "Start with today's check-in — it sets your whole score. Two minutes.";
       const gaps: string[] = [];
@@ -86,82 +171,101 @@ export default function OttoChat() {
 
   const ask = (q: string) => {
     const text = q.trim();
-    if (!text) return;
-    setMsgs((m) => [...m, { role: "user", text }, { role: "bot", text: answer(text) }]);
+    if (!text || typing) return;
+    const reply = answer(text);
+    setMsgs((m) => [...m, { id: String(Date.now()), role: "user", text }]);
     setInput("");
+    setTyping(true);
     setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 60);
+    setTimeout(() => {
+      setTyping(false);
+      setMsgs((m) => [...m, { id: String(Date.now() + 1), role: "bot", text: reply }]);
+      if (speakOn) { try { Speech.stop(); Speech.speak(reply, { rate: 1.0, pitch: 1.02 }); } catch { /* ignore */ } }
+      setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 80);
+    }, 650);
   };
+
+  const backdropOpacity = anim.interpolate({ inputRange: [0, 1], outputRange: [0, 1] });
+  const sheetTranslate = anim.interpolate({ inputRange: [0, 1], outputRange: [60, 0] });
+  const sheetScale = anim.interpolate({ inputRange: [0, 1], outputRange: [0.97, 1] });
+  const ringScale = pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.8] });
+  const ringOpacity = pulse.interpolate({ inputRange: [0, 1], outputRange: [0.35, 0] });
 
   return (
     <>
-      <PressableScale
-        onPress={() => setOpen(true)}
-        scaleTo={0.9}
-        style={[s.fab, { backgroundColor: c.ink, bottom: insets.bottom + 64 }]}
-      >
-        <Ionicons name="chatbubble-ellipses" size={22} color={c.obsidian} />
-      </PressableScale>
+      {/* FAB with a soft pulse ring */}
+      <View pointerEvents="box-none" style={[s.fabWrap, { bottom: insets.bottom + 64 }]}>
+        <Animated.View style={[s.ring, { backgroundColor: c.ink, transform: [{ scale: ringScale }], opacity: ringOpacity }]} />
+        <PressableScale onPress={open} scaleTo={0.88} style={[s.fab, { backgroundColor: c.ink }]}>
+          <Ionicons name="sparkles" size={20} color={c.obsidian} />
+        </PressableScale>
+      </View>
 
-      <Modal visible={open} transparent animationType="slide" onRequestClose={() => setOpen(false)}>
-        <Pressable style={s.backdrop} onPress={() => setOpen(false)} />
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
-          style={s.sheetWrap}
-        >
-          <View style={[s.sheet, { backgroundColor: c.surface, borderColor: c.line, paddingBottom: insets.bottom + 12 }]}>
-            <View style={[s.header, { borderBottomColor: c.line }]}>
-              <View style={s.headerLeft}>
-                <View style={[s.headerIcon, { backgroundColor: c.ink }]}>
-                  <Ionicons name="chatbubble-ellipses" size={14} color={c.obsidian} />
+      <Modal visible={mounted} transparent statusBarTranslucent onRequestClose={close}>
+        <Animated.View style={[s.backdrop, { opacity: backdropOpacity }]}>
+          <Pressable style={{ flex: 1 }} onPress={close} />
+        </Animated.View>
+        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={s.sheetWrap} pointerEvents="box-none">
+          <Animated.View style={{ transform: [{ translateY: sheetTranslate }, { scale: sheetScale }], opacity: anim }}>
+            <BlurView intensity={isDark ? 50 : 70} tint={isDark ? "dark" : "light"} style={[s.sheet, { borderColor: c.line, paddingBottom: insets.bottom + 12 }]}>
+              {/* grabber */}
+              <View style={[s.grabber, { backgroundColor: c.lineStrong }]} />
+              {/* header */}
+              <View style={[s.header, { borderBottomColor: c.line }]}>
+                <View style={s.headerLeft}>
+                  <View style={[s.avatar, { backgroundColor: c.ink }]}>
+                    <Ionicons name="sparkles" size={15} color={c.obsidian} />
+                  </View>
+                  <View>
+                    <Text style={s.headerTitle}>Otto</Text>
+                    <View style={s.onlineRow}>
+                      <View style={s.onlineDot} />
+                      <Text style={s.headerSub}>your coach</Text>
+                    </View>
+                  </View>
                 </View>
-                <Text style={s.headerTitle}>TheLifeOS coach</Text>
+                <View style={s.headerActions}>
+                  <PressableScale onPress={() => setSpeakOn((v) => !v)} scaleTo={0.85} style={[s.headerBtn, { borderColor: c.line }]}>
+                    <Ionicons name={speakOn ? "volume-high" : "volume-mute"} size={16} color={speakOn ? c.ink : c.inkFaint} />
+                  </PressableScale>
+                  <PressableScale onPress={close} scaleTo={0.85} style={[s.headerBtn, { borderColor: c.line }]}>
+                    <Ionicons name="close" size={18} color={c.inkMuted} />
+                  </PressableScale>
+                </View>
               </View>
-              <Pressable hitSlop={10} onPress={() => setOpen(false)}>
-                <Ionicons name="close" size={20} color={c.inkMuted} />
-              </Pressable>
-            </View>
 
-            <ScrollView ref={scrollRef} style={{ maxHeight: 320 }} contentContainerStyle={{ padding: 16, gap: 10 }}>
-              {msgs.map((m, i) => (
-                <View
-                  key={i}
-                  style={[
-                    s.bubble,
-                    m.role === "user"
-                      ? { alignSelf: "flex-end", backgroundColor: c.ink }
-                      : { alignSelf: "flex-start", backgroundColor: c.fill, borderWidth: 1, borderColor: c.line },
-                  ]}
-                >
-                  <Text style={{ color: m.role === "user" ? c.obsidian : c.ink, fontFamily: fonts.body, fontSize: 13.5, lineHeight: 19 }}>
-                    {m.text}
-                  </Text>
-                </View>
-              ))}
-            </ScrollView>
+              {/* messages */}
+              <ScrollView ref={scrollRef} style={{ maxHeight: 360 }} contentContainerStyle={{ padding: 16, gap: 10 }} keyboardShouldPersistTaps="handled">
+                {msgs.map((m) => <Bubble key={m.id} m={m} c={c} />)}
+                {typing && <TypingDots c={c} />}
+              </ScrollView>
 
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.sugRow} contentContainerStyle={{ gap: 8, paddingHorizontal: 12 }}>
-              {SUGGESTIONS.map((sug) => (
-                <PressableScale key={sug} onPress={() => ask(sug)} style={[s.sug, { borderColor: c.line, backgroundColor: c.fill }]}>
-                  <Text style={[s.sugText, { color: c.inkMuted }]}>{sug}</Text>
+              {/* suggestions */}
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.sugRow} contentContainerStyle={{ gap: 8, paddingHorizontal: 12 }}>
+                {SUGGESTIONS.map((sug) => (
+                  <PressableScale key={sug} onPress={() => ask(sug)} style={[s.sug, { borderColor: c.line, backgroundColor: c.fill }]}>
+                    <Text style={[s.sugText, { color: c.inkMuted }]}>{sug}</Text>
+                  </PressableScale>
+                ))}
+              </ScrollView>
+
+              {/* input */}
+              <View style={[s.inputRow, { borderTopColor: c.line }]}>
+                <TextInput
+                  value={input}
+                  onChangeText={setInput}
+                  placeholder="Ask Otto…"
+                  placeholderTextColor={c.inkFaint}
+                  style={[s.input, { borderColor: c.line, backgroundColor: c.fill, color: c.ink }]}
+                  returnKeyType="send"
+                  onSubmitEditing={() => ask(input)}
+                />
+                <PressableScale style={[s.send, { backgroundColor: c.ink }]} onPress={() => ask(input)} scaleTo={0.9}>
+                  <Ionicons name="arrow-up" size={18} color={c.obsidian} />
                 </PressableScale>
-              ))}
-            </ScrollView>
-
-            <View style={[s.inputRow, { borderTopColor: c.line }]}>
-              <TextInput
-                value={input}
-                onChangeText={setInput}
-                placeholder="Ask your coach…"
-                placeholderTextColor={c.inkFaint}
-                style={[s.input, { borderColor: c.line, backgroundColor: c.fill, color: c.ink }]}
-                returnKeyType="send"
-                onSubmitEditing={() => ask(input)}
-              />
-              <PressableScale style={[s.send, { backgroundColor: c.ink }]} onPress={() => ask(input)}>
-                <Ionicons name="send" size={16} color={c.obsidian} />
-              </PressableScale>
-            </View>
-          </View>
+              </View>
+            </BlurView>
+          </Animated.View>
         </KeyboardAvoidingView>
       </Modal>
     </>
@@ -170,23 +274,41 @@ export default function OttoChat() {
 
 const makeStyles = (c: Palette) =>
   StyleSheet.create({
+    fabWrap: { position: "absolute", right: 16, width: 54, height: 54, alignItems: "center", justifyContent: "center" },
+    ring: { position: "absolute", width: 54, height: 54, borderRadius: 27 },
     fab: {
-      position: "absolute", right: 16, width: 52, height: 52, borderRadius: 26,
-      alignItems: "center", justifyContent: "center",
-      shadowColor: "#000", shadowOpacity: 0.4, shadowRadius: 14, shadowOffset: { width: 0, height: 8 }, elevation: 8,
+      width: 54, height: 54, borderRadius: 27, alignItems: "center", justifyContent: "center",
+      shadowColor: "#000", shadowOpacity: 0.4, shadowRadius: 16, shadowOffset: { width: 0, height: 8 }, elevation: 8,
     },
-    backdrop: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.5)" },
+    backdrop: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.55)" },
     sheetWrap: { flex: 1, justifyContent: "flex-end" },
-    sheet: { borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, borderWidth: 1 },
-    header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 1 },
-    headerLeft: { flexDirection: "row", alignItems: "center", gap: 8 },
-    headerIcon: { width: 26, height: 26, borderRadius: 8, alignItems: "center", justifyContent: "center" },
-    headerTitle: { fontFamily: fonts.display, fontSize: 14, color: c.ink },
-    bubble: { maxWidth: "85%", borderRadius: 16, paddingHorizontal: 13, paddingVertical: 9 },
+    sheet: {
+      borderTopLeftRadius: 28, borderTopRightRadius: 28, borderWidth: 1, overflow: "hidden",
+      shadowColor: "#000", shadowOpacity: 0.5, shadowRadius: 30, shadowOffset: { width: 0, height: -10 },
+    },
+    grabber: { alignSelf: "center", width: 38, height: 4, borderRadius: 2, marginTop: 8, marginBottom: 4, opacity: 0.6 },
+    header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1 },
+    headerLeft: { flexDirection: "row", alignItems: "center", gap: 11 },
+    avatar: { width: 34, height: 34, borderRadius: 11, alignItems: "center", justifyContent: "center" },
+    headerTitle: { fontFamily: fonts.displayBold, fontSize: 16, color: c.ink },
+    onlineRow: { flexDirection: "row", alignItems: "center", gap: 5, marginTop: 1 },
+    onlineDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: "#3fcf6e" },
+    headerSub: { fontFamily: fonts.body, fontSize: 12, color: c.inkFaint },
+    headerActions: { flexDirection: "row", gap: 8 },
+    headerBtn: { width: 34, height: 34, borderRadius: radius.sm, borderWidth: 1, alignItems: "center", justifyContent: "center" },
+    bubbleUser: { alignSelf: "flex-end", maxWidth: "84%", borderRadius: 18, borderBottomRightRadius: 6, paddingHorizontal: 14, paddingVertical: 10 },
+    bubbleBot: { alignSelf: "flex-start", maxWidth: "84%", borderRadius: 18, borderBottomLeftRadius: 6, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 10 },
+    typing: { flexDirection: "row", alignItems: "center", gap: 5, paddingVertical: 13 },
     sugRow: { paddingVertical: 8 },
-    sug: { borderWidth: 1, borderRadius: radius.pill, paddingHorizontal: 12, paddingVertical: 6 },
-    sugText: { fontFamily: fonts.body, fontSize: 12 },
-    inputRow: { flexDirection: "row", alignItems: "center", gap: 8, padding: 12, borderTopWidth: 1 },
-    input: { flex: 1, borderWidth: 1, borderRadius: radius.md, paddingHorizontal: 14, paddingVertical: 11, fontFamily: fonts.body, fontSize: 14 },
-    send: { width: 42, height: 42, borderRadius: radius.md, alignItems: "center", justifyContent: "center" },
+    sug: { borderWidth: 1, borderRadius: radius.pill, paddingHorizontal: 13, paddingVertical: 7 },
+    sugText: { fontFamily: fonts.bodyMedium, fontSize: 12 },
+    inputRow: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 12, paddingTop: 10, borderTopWidth: 1 },
+    input: { flex: 1, borderWidth: 1, borderRadius: radius.pill, paddingHorizontal: 16, paddingVertical: 11, fontFamily: fonts.body, fontSize: 14 },
+    send: { width: 42, height: 42, borderRadius: 21, alignItems: "center", justifyContent: "center" },
   });
+
+const styles = StyleSheet.create({
+  bubbleUser: { alignSelf: "flex-end", maxWidth: "84%", borderRadius: 18, borderBottomRightRadius: 6, paddingHorizontal: 14, paddingVertical: 10 },
+  bubbleBot: { alignSelf: "flex-start", maxWidth: "84%", borderRadius: 18, borderBottomLeftRadius: 6, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 10 },
+  typing: { flexDirection: "row", alignItems: "center", gap: 5, paddingVertical: 13 },
+});
