@@ -134,9 +134,22 @@ interface Store {
   // money
   addTxn: (amount: number, note: string) => void;
   deleteTxn: (id: string) => void;
+  // cloud sync bridge (short keys match the web app's snapshot format)
+  exportRaw: () => Record<string, string>;
+  importRaw: (data: Record<string, string>) => void;
   // utility
   resetAll: () => void;
 }
+
+/** Short key (matches web `snapshotState`) → AsyncStorage key. */
+const SYNC_KEYS: Record<string, string> = {
+  health_logs: K_LOGS,
+  wins: K_WINS,
+  habits: K_HABITS,
+  goals: K_GOALS,
+  journal: K_JOURNAL,
+  money: K_MONEY,
+};
 
 const Ctx = createContext<Store | null>(null);
 
@@ -297,6 +310,42 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  /* ── cloud sync bridge ── */
+  const exportRaw = useCallback(
+    (): Record<string, string> => ({
+      health_logs: JSON.stringify(logs),
+      wins: JSON.stringify(wins),
+      habits: JSON.stringify(habits),
+      goals: JSON.stringify(goals),
+      journal: JSON.stringify(journal),
+      money: JSON.stringify(money),
+    }),
+    [logs, wins, habits, goals, journal, money]
+  );
+  const importRaw = useCallback((data: Record<string, string>) => {
+    // Overlay only the keys we own; never delete unknown keys (web may have more).
+    for (const [short, asKey] of Object.entries(SYNC_KEYS)) {
+      const raw = data[short];
+      if (typeof raw !== "string") continue;
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(raw);
+      } catch {
+        continue;
+      }
+      if (!Array.isArray(parsed)) continue;
+      switch (short) {
+        case "health_logs": setLogs(parsed as HealthLog[]); break;
+        case "wins": setWins(parsed as Win[]); break;
+        case "habits": setHabits(parsed as Habit[]); break;
+        case "goals": setGoals(parsed as Goal[]); break;
+        case "journal": setJournal(parsed as JournalEntry[]); break;
+        case "money": setMoney(parsed as Txn[]); break;
+      }
+      AsyncStorage.setItem(asKey, raw).catch(() => {});
+    }
+  }, []);
+
   /* ── utility ── */
   const resetAll = useCallback(() => {
     setLogs([]); setWins([]); setHabits([]); setGoals([]); setJournal([]); setMoney([]);
@@ -311,6 +360,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       addGoal, setGoalProgress, deleteGoal,
       addJournal, deleteJournal,
       addTxn, deleteTxn,
+      exportRaw, importRaw,
       resetAll,
     }),
     [
@@ -320,6 +370,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       addGoal, setGoalProgress, deleteGoal,
       addJournal, deleteJournal,
       addTxn, deleteTxn,
+      exportRaw, importRaw,
       resetAll,
     ]
   );

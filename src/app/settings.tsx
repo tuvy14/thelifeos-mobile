@@ -1,12 +1,23 @@
 import { View, Text, Pressable, StyleSheet, Alert } from "react-native";
+import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
 import { SubScreen } from "@/components/sub-screen";
 import { theme, radius } from "@/lib/theme";
 import { useStore } from "@/lib/store";
+import { useSync } from "@/lib/sync";
 
 export default function SettingsScreen() {
   const { logs, wins, habits, goals, journal, money, resetAll } = useStore();
+  const { configured, email, status } = useSync();
+
+  const syncSub = !configured
+    ? "Local only — not configured"
+    : email
+      ? status === "syncing"
+        ? "Syncing…"
+        : `Signed in · ${email}`
+      : "Sign in to sync your devices";
 
   const counts = [
     { label: "Check-ins", value: logs.length },
@@ -40,11 +51,26 @@ export default function SettingsScreen() {
         ))}
       </View>
 
+      <Pressable style={styles.syncRow} onPress={() => router.navigate("/account")}>
+        <View style={styles.syncIcon}>
+          <Ionicons
+            name={email ? "cloud-done-outline" : "cloud-outline"}
+            size={18}
+            color={theme.ink}
+          />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.syncTitle}>Cloud sync</Text>
+          <Text style={styles.syncSub}>{syncSub}</Text>
+        </View>
+        <Ionicons name="chevron-forward" size={18} color={theme.inkFaint} />
+      </Pressable>
+
       <View style={styles.note}>
         <Ionicons name="lock-closed-outline" size={16} color={theme.inkMuted} />
         <Text style={styles.noteText}>
-          Everything lives only on this device. Nothing is uploaded. Cloud sync across your devices
-          is coming soon.
+          Your data lives on this device. Sign in above to back it up and sync it across your
+          devices — nothing else is ever uploaded.
         </Text>
       </View>
 
@@ -82,6 +108,28 @@ const styles = StyleSheet.create({
   divider: { borderBottomWidth: 1, borderBottomColor: theme.line },
   dataLabel: { color: theme.inkMuted, fontSize: 14 },
   dataValue: { color: theme.ink, fontSize: 14, fontWeight: "700" },
+  syncRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    backgroundColor: theme.surface,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: theme.line,
+    padding: 16,
+    marginBottom: 12,
+  },
+  syncIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: theme.line,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  syncTitle: { color: theme.ink, fontSize: 16, fontWeight: "700" },
+  syncSub: { color: theme.inkFaint, fontSize: 12, marginTop: 2 },
   note: {
     flexDirection: "row",
     gap: 10,

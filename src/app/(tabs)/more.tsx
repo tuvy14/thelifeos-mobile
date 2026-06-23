@@ -10,6 +10,7 @@ import {
   habitDoneToday,
   journalToday,
 } from "@/lib/store";
+import { useSync } from "@/lib/sync";
 
 type Item = {
   href: Href;
@@ -20,6 +21,15 @@ type Item = {
 
 export default function MoreScreen() {
   const { habits, goals, journal, money } = useStore();
+  const { configured, email, status } = useSync();
+
+  const syncSub = !configured
+    ? "Local only"
+    : email
+      ? status === "syncing"
+        ? "Syncing…"
+        : `Synced · ${email}`
+      : "Sign in to sync devices";
 
   const habitsDone = habits.filter(habitDoneToday).length;
   const items: Item[] = [
@@ -52,6 +62,12 @@ export default function MoreScreen() {
       icon: "wallet-outline",
       title: "Money",
       subtitle: money.length ? `Balance ${fmtMoney(balance(money))}` : "Track in & out",
+    },
+    {
+      href: "/account",
+      icon: email ? "cloud-done-outline" : "cloud-outline",
+      title: "Cloud sync",
+      subtitle: syncSub,
     },
     {
       href: "/settings",
