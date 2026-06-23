@@ -4,6 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 
 import { Screen } from "@/components/screen";
 import { Card, Eyebrow, Field, EmptyState } from "@/components/ui";
+import { PressableScale, Reveal } from "@/components/anim";
 import { useTheme, radius, fonts } from "@/lib/theme";
 import { useStore, winsSorted, today } from "@/lib/store";
 
@@ -62,9 +63,9 @@ export default function WinsScreen() {
             returnKeyType="done"
             onSubmitEditing={submit}
           />
-          <Pressable style={[styles.addBtn, { backgroundColor: c.ink }]} onPress={submit}>
+          <PressableScale style={[styles.addBtn, { backgroundColor: c.ink }]} onPress={submit}>
             <Ionicons name="add" size={20} color={c.obsidian} />
-          </Pressable>
+          </PressableScale>
         </View>
       </Card>
 
@@ -78,16 +79,18 @@ export default function WinsScreen() {
             <View key={date}>
               <Text style={[styles.groupLabel, { color: c.inkFaint }]}>{dateLabel(date).toUpperCase()}</Text>
               <View style={{ gap: 8 }}>
-                {items.map((w) => (
-                  <View key={w.id} style={[styles.item, { borderColor: c.line, backgroundColor: c.card }]}>
-                    <View style={[styles.check, { backgroundColor: c.ink }]}>
-                      <Ionicons name="checkmark" size={11} color={c.obsidian} />
+                {items.map((w, idx) => (
+                  <Reveal key={w.id} delay={idx * 45}>
+                    <View style={[styles.item, { borderColor: c.line, backgroundColor: c.card }]}>
+                      <View style={[styles.check, { backgroundColor: c.ink }]}>
+                        <Ionicons name="checkmark" size={11} color={c.obsidian} />
+                      </View>
+                      <Text style={[styles.itemText, { color: c.ink }]}>{w.text}</Text>
+                      <PressableScale hitSlop={10} scaleTo={0.85} onPress={() => deleteWin(w.id)}>
+                        <Ionicons name="trash-outline" size={15} color={c.inkFaint} />
+                      </PressableScale>
                     </View>
-                    <Text style={[styles.itemText, { color: c.ink }]}>{w.text}</Text>
-                    <Pressable hitSlop={10} onPress={() => deleteWin(w.id)}>
-                      <Ionicons name="trash-outline" size={15} color={c.inkFaint} />
-                    </Pressable>
-                  </View>
+                  </Reveal>
                 ))}
               </View>
             </View>

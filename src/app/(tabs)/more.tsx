@@ -4,6 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 
 import { Screen } from "@/components/screen";
 import { Eyebrow } from "@/components/ui";
+import { PressableScale, Reveal } from "@/components/anim";
 import { useTheme, radius, fonts, type Palette } from "@/lib/theme";
 import { useStore, FOCUS_AREAS, activeMode } from "@/lib/store";
 import { useSync } from "@/lib/sync";
@@ -50,13 +51,15 @@ export default function MoreScreen() {
   const s = makeStyles(c);
   const current = activeMode(mode, profile);
 
-  const Tile = ({ it }: { it: Tile }) => (
-    <Pressable style={s.tile} onPress={() => router.navigate(it.href)}>
-      <View style={[s.tileIcon, { borderColor: c.line, backgroundColor: c.fill }]}>
-        <Ionicons name={it.icon} size={17} color={c.ink} />
-      </View>
-      <Text style={s.tileLabel}>{it.label}</Text>
-    </Pressable>
+  const Tile = ({ it, delay = 0 }: { it: Tile; delay?: number }) => (
+    <Reveal delay={delay} style={s.tileWrap}>
+      <PressableScale style={s.tile} onPress={() => router.navigate(it.href)}>
+        <View style={[s.tileIcon, { borderColor: c.line, backgroundColor: c.fill }]}>
+          <Ionicons name={it.icon} size={17} color={c.ink} />
+        </View>
+        <Text style={s.tileLabel}>{it.label}</Text>
+      </PressableScale>
+    </Reveal>
   );
 
   const pickMode = (id: string) => { setActiveMode(id); router.navigate("/check-in"); };
@@ -70,49 +73,51 @@ export default function MoreScreen() {
         <View key={g.label ?? "main"} style={{ marginTop: g.label ? 22 : 18 }}>
           {g.label && <Text style={s.groupLabel}>{g.label.toUpperCase()}</Text>}
           <View style={s.grid}>
-            {g.items.map((it) => <Tile key={it.label} it={it} />)}
+            {g.items.map((it, idx) => <Tile key={it.label} it={it} delay={idx * 55} />)}
           </View>
         </View>
       ))}
 
       {/* Account + settings */}
       <View style={{ marginTop: 22, gap: 10 }}>
-        <Pressable style={s.wideRow} onPress={() => router.navigate("/referrals")}>
+        <PressableScale style={s.wideRow} onPress={() => router.navigate("/referrals")}>
           <View style={[s.tileIcon, { borderColor: c.line, backgroundColor: c.fill }]}><Ionicons name="gift-outline" size={17} color={c.ink} /></View>
           <View style={{ flex: 1 }}>
             <Text style={s.wideTitle}>Refer & earn</Text>
             <Text style={s.wideSub}>Invite friends, earn 25%</Text>
           </View>
           <Ionicons name="chevron-forward" size={18} color={c.inkFaint} />
-        </Pressable>
-        <Pressable style={s.wideRow} onPress={() => router.navigate("/account")}>
+        </PressableScale>
+        <PressableScale style={s.wideRow} onPress={() => router.navigate("/account")}>
           <View style={[s.tileIcon, { borderColor: c.line, backgroundColor: c.fill }]}><Ionicons name={email ? "cloud-done-outline" : "cloud-outline"} size={17} color={c.ink} /></View>
           <View style={{ flex: 1 }}>
             <Text style={s.wideTitle}>Cloud sync</Text>
             <Text style={s.wideSub}>{email ? `Synced · ${email}` : "Sign in to sync devices"}</Text>
           </View>
           <Ionicons name="chevron-forward" size={18} color={c.inkFaint} />
-        </Pressable>
-        <Pressable style={s.wideRow} onPress={() => router.navigate("/settings")}>
+        </PressableScale>
+        <PressableScale style={s.wideRow} onPress={() => router.navigate("/settings")}>
           <View style={[s.tileIcon, { borderColor: c.line, backgroundColor: c.fill }]}><Ionicons name="settings-outline" size={17} color={c.ink} /></View>
           <Text style={[s.wideTitle, { flex: 1 }]}>Settings</Text>
           <Ionicons name="chevron-forward" size={18} color={c.inkFaint} />
-        </Pressable>
+        </PressableScale>
       </View>
 
       {/* Focus mode */}
       <View style={{ marginTop: 22 }}>
         <Text style={s.groupLabel}>FOCUS MODE</Text>
         <View style={s.grid}>
-          {FOCUS_AREAS.map((f) => {
+          {FOCUS_AREAS.map((f, idx) => {
             const on = current === f.id;
             return (
-              <Pressable key={f.id} style={[s.tile, on && { borderColor: c.ink }]} onPress={() => pickMode(f.id)}>
-                <View style={[s.tileIcon, { borderColor: c.line, backgroundColor: on ? c.ink : c.fill }]}>
-                  <Ionicons name={FOCUS_ICON[f.id] ?? "ellipse-outline"} size={17} color={on ? c.obsidian : c.ink} />
-                </View>
-                <Text style={s.tileLabel} numberOfLines={1}>{f.label}</Text>
-              </Pressable>
+              <Reveal key={f.id} delay={idx * 45} style={s.tileWrap}>
+                <PressableScale style={[s.tile, on && { borderColor: c.ink }]} onPress={() => pickMode(f.id)}>
+                  <View style={[s.tileIcon, { borderColor: c.line, backgroundColor: on ? c.ink : c.fill }]}>
+                    <Ionicons name={FOCUS_ICON[f.id] ?? "ellipse-outline"} size={17} color={on ? c.obsidian : c.ink} />
+                  </View>
+                  <Text style={s.tileLabel} numberOfLines={1}>{f.label}</Text>
+                </PressableScale>
+              </Reveal>
             );
           })}
         </View>
@@ -127,7 +132,8 @@ const makeStyles = (c: Palette) =>
   StyleSheet.create({
     groupLabel: { fontFamily: fonts.monoMedium, fontSize: 11, letterSpacing: 1.4, color: c.inkFaint, marginBottom: 12 },
     grid: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
-    tile: { flexGrow: 1, flexBasis: "46%", flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: c.card, borderWidth: 1, borderColor: c.line, borderRadius: radius.lg, padding: 14 },
+    tileWrap: { flexGrow: 1, flexBasis: "46%" },
+    tile: { flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: c.card, borderWidth: 1, borderColor: c.line, borderRadius: radius.lg, padding: 14 },
     tileIcon: { width: 36, height: 36, borderRadius: radius.sm, borderWidth: 1, alignItems: "center", justifyContent: "center" },
     tileLabel: { fontFamily: fonts.bodySemibold, fontSize: 14, color: c.ink, flexShrink: 1 },
     wideRow: { flexDirection: "row", alignItems: "center", gap: 14, backgroundColor: c.card, borderWidth: 1, borderColor: c.line, borderRadius: radius.lg, padding: 14 },

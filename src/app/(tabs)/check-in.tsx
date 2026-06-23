@@ -6,6 +6,7 @@ import { Ionicons } from "@expo/vector-icons";
 
 import { Screen } from "@/components/screen";
 import { Card, Eyebrow } from "@/components/ui";
+import { PressableScale } from "@/components/anim";
 import { useTheme, radius, fonts, type Palette } from "@/lib/theme";
 import {
   useStore,
@@ -192,13 +193,13 @@ export default function CheckinScreen() {
           {ritualsForMode.map((r) => {
             const on = rituals.includes(r.id);
             return (
-              <Pressable
+              <PressableScale
                 key={r.id}
                 onPress={() => toggleRitual(r.id)}
                 style={[s.ritual, { borderColor: on ? c.ink : c.line, backgroundColor: on ? c.ink : c.fill }]}
               >
                 <Text style={[s.ritualText, { color: on ? c.obsidian : c.inkMuted }]}>{r.emoji} {r.label}</Text>
-              </Pressable>
+              </PressableScale>
             );
           })}
         </View>
@@ -212,7 +213,7 @@ export default function CheckinScreen() {
         <TextRow icon="bulb-outline" label="Could improve" placeholder="What drained you, or could be better tomorrow…" value={improve} onChange={setImprove} />
       </Card>
 
-      <Pressable style={[s.save, { backgroundColor: c.ink }]} onPress={save}>
+      <PressableScale style={[s.save, { backgroundColor: c.ink }]} onPress={save}>
         {saved ? (
           <>
             <Ionicons name="checkmark" size={18} color={c.obsidian} />
@@ -221,7 +222,7 @@ export default function CheckinScreen() {
         ) : (
           <Text style={[s.saveText, { color: c.obsidian }]}>Save check-in</Text>
         )}
-      </Pressable>
+      </PressableScale>
     </Screen>
   );
 }

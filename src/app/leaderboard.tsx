@@ -4,6 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 
 import { SubScreen } from "@/components/sub-screen";
 import { Card } from "@/components/ui";
+import { PressableScale, Reveal } from "@/components/anim";
 import { useTheme, radius, fonts, type Palette } from "@/lib/theme";
 import { useStore, scoreFor, todayLog, streak, scoreHistory, monthRevenue } from "@/lib/store";
 
@@ -59,6 +60,7 @@ export default function LeaderboardScreen() {
     );
 
   const RowItem = ({ r, rank }: { r: Row; rank: number }) => (
+    <Reveal delay={Math.min(rank, 12) * 35}>
     <View style={[s.row, { borderColor: r.isYou ? c.chipBorder : c.line, backgroundColor: r.isYou ? c.chipBg : c.card }]}>
       <Text style={s.rank}>{rank}</Text>
       <View style={[s.avatar, { borderColor: c.line, backgroundColor: r.isYou ? c.ink : c.fill }]}>
@@ -72,6 +74,7 @@ export default function LeaderboardScreen() {
       <View style={s.deltaWrap}><Delta d={r.delta} /></View>
       <Text style={s.points}>{r.points.toLocaleString()}</Text>
     </View>
+    </Reveal>
   );
 
   return (
@@ -80,9 +83,9 @@ export default function LeaderboardScreen() {
 
       <View style={[s.segment, { borderColor: c.line, backgroundColor: c.fill }]}>
         {(["week", "all"] as const).map((m) => (
-          <Pressable key={m} onPress={() => setMode(m)} style={[s.segBtn, mode === m && { backgroundColor: c.ink }]}>
+          <PressableScale key={m} onPress={() => setMode(m)} style={[s.segBtn, mode === m && { backgroundColor: c.ink }]}>
             <Text style={[s.segText, { color: mode === m ? c.obsidian : c.inkMuted }]}>{m === "week" ? "This week" : "All time"}</Text>
-          </Pressable>
+          </PressableScale>
         ))}
       </View>
 

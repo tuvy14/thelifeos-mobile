@@ -4,6 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 
 import { SubScreen } from "@/components/sub-screen";
 import { Card, EmptyState } from "@/components/ui";
+import { PressableScale } from "@/components/anim";
 import { useTheme, radius, fonts, type Palette } from "@/lib/theme";
 import { useStore, REFERRAL_PERCENT, REFERRAL_MONTHLY, REFERRAL_DISCOUNT } from "@/lib/store";
 
@@ -50,9 +51,9 @@ export default function ReferralsScreen() {
         <Text style={s.formLabel}>ADD A FRIEND YOU&apos;VE INVITED</Text>
         <View style={s.formRow}>
           <TextInput value={name} onChangeText={setName} placeholder="Friend's name" placeholderTextColor={c.inkFaint} style={[s.input, { borderColor: c.line, backgroundColor: c.fill }]} returnKeyType="done" onSubmitEditing={invite} />
-          <Pressable style={[s.addBtn, { backgroundColor: c.ink }]} onPress={invite}>
+          <PressableScale style={[s.addBtn, { backgroundColor: c.ink }]} onPress={invite}>
             <Ionicons name="add" size={20} color={c.obsidian} />
-          </Pressable>
+          </PressableScale>
         </View>
       </Card>
 

@@ -3,6 +3,7 @@ import { Ionicons } from "@expo/vector-icons";
 
 import { SubScreen } from "@/components/sub-screen";
 import { Card } from "@/components/ui";
+import { Reveal } from "@/components/anim";
 import { useTheme, radius, fonts, type Palette } from "@/lib/theme";
 import { useStore, getAchievements } from "@/lib/store";
 
@@ -23,10 +24,11 @@ export default function AchievementsScreen() {
       <Text style={s.sub}>{unlocked}/{items.length} unlocked — keep stacking small wins.</Text>
 
       <View style={s.grid}>
-        {items.map((a) => {
+        {items.map((a, idx) => {
           const pct = Math.min(100, Math.round((a.current / a.goal) * 100));
           return (
-            <Card key={a.id} style={[s.card, !a.unlocked && { opacity: 0.78 }]} padding={16}>
+            <Reveal key={a.id} delay={idx * 45} style={s.card}>
+            <Card style={!a.unlocked && { opacity: 0.78 }} padding={16}>
               <View style={[s.badge, { borderColor: c.line, backgroundColor: a.unlocked ? c.ink : c.fill }]}>
                 <Ionicons name={ICON[a.icon] ?? "star"} size={20} color={a.unlocked ? c.obsidian : c.inkMuted} />
               </View>
@@ -45,6 +47,7 @@ export default function AchievementsScreen() {
                 </>
               )}
             </Card>
+            </Reveal>
           );
         })}
       </View>

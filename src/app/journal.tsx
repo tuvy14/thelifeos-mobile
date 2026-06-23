@@ -4,6 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 
 import { SubScreen } from "@/components/sub-screen";
 import { Card, EmptyState, PrimaryButton } from "@/components/ui";
+import { PressableScale } from "@/components/anim";
 import { useTheme, radius, fonts } from "@/lib/theme";
 import { useStore, today } from "@/lib/store";
 
@@ -46,9 +47,9 @@ export default function JournalScreen() {
             <Card key={j.id} padding={16}>
               <View style={styles.head}>
                 <Text style={[styles.date, { color: c.inkFaint }]}>{dateLabel(j.date, j.ts)}</Text>
-                <Pressable hitSlop={10} onPress={() => deleteJournal(j.id)}>
+                <PressableScale hitSlop={10} onPress={() => deleteJournal(j.id)}>
                   <Ionicons name="trash-outline" size={15} color={c.inkFaint} />
-                </Pressable>
+                </PressableScale>
               </View>
               <Text style={[styles.text, { color: c.ink }]}>{j.text}</Text>
             </Card>

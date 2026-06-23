@@ -5,6 +5,7 @@ import { router, type Href } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
 import { useTheme, radius, fonts, type Palette } from "@/lib/theme";
+import { PressableScale } from "@/components/anim";
 import { useStore, FOCUS_AREAS } from "@/lib/store";
 
 interface Cmd { id: string; label: string; group: string; icon: keyof typeof Ionicons.glyphMap; run: () => void }
@@ -73,13 +74,13 @@ export default function CommandPalette({ visible, onClose }: { visible: boolean;
               <Text style={s.empty}>No results for “{query}”.</Text>
             ) : (
               filtered.map((cmd) => (
-                <Pressable key={cmd.id} style={s.cmd} onPress={cmd.run}>
+                <PressableScale key={cmd.id} style={s.cmd} onPress={cmd.run} scaleTo={0.98}>
                   <View style={[s.cmdIcon, { borderColor: c.line, backgroundColor: c.fill }]}>
                     <Ionicons name={cmd.icon} size={15} color={c.ink} />
                   </View>
                   <Text style={s.cmdLabel}>{cmd.label}</Text>
                   <Text style={s.cmdGroup}>{cmd.group.toUpperCase()}</Text>
-                </Pressable>
+                </PressableScale>
               ))
             )}
           </ScrollView>

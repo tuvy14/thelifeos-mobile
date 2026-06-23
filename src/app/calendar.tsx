@@ -4,6 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 
 import { SubScreen } from "@/components/sub-screen";
 import { Card, EmptyState } from "@/components/ui";
+import { PressableScale } from "@/components/anim";
 import { useTheme, radius, fonts, type Palette } from "@/lib/theme";
 import { useStore, today, type EventPriority } from "@/lib/store";
 
@@ -52,27 +53,27 @@ export default function CalendarScreen() {
             const ds = ymd(d);
             const on = ds === date;
             return (
-              <Pressable key={ds} onPress={() => setDate(ds)} style={[s.dayChip, { borderColor: on ? c.ink : c.line, backgroundColor: on ? c.ink : "transparent" }]}>
+              <PressableScale key={ds} onPress={() => setDate(ds)} style={[s.dayChip, { borderColor: on ? c.ink : c.line, backgroundColor: on ? c.ink : "transparent" }]}>
                 <Text style={[s.dayDow, { color: on ? c.obsidian : c.inkFaint }]}>{d.toLocaleDateString(undefined, { weekday: "short" }).toUpperCase()}</Text>
                 <Text style={[s.dayNum, { color: on ? c.obsidian : c.ink }]}>{d.getDate()}</Text>
-              </Pressable>
+              </PressableScale>
             );
           })}
         </ScrollView>
         <View style={s.formRow}>
           <TextInput value={title} onChangeText={setTitle} placeholder="Task or event…" placeholderTextColor={c.inkFaint} style={[s.input, { borderColor: c.line, backgroundColor: c.fill }]} returnKeyType="done" onSubmitEditing={add} />
-          <Pressable style={[s.addBtn, { backgroundColor: c.ink }]} onPress={add}>
+          <PressableScale style={[s.addBtn, { backgroundColor: c.ink }]} onPress={add}>
             <Ionicons name="add" size={20} color={c.obsidian} />
-          </Pressable>
+          </PressableScale>
         </View>
         <View style={s.prRow}>
           {PRIORITIES.map((p) => {
             const on = priority === p;
             return (
-              <Pressable key={p} onPress={() => setPriority(p)} style={[s.prChip, { borderColor: on ? c.ink : c.line, backgroundColor: on ? c.ink : "transparent" }]}>
+              <PressableScale key={p} onPress={() => setPriority(p)} style={[s.prChip, { borderColor: on ? c.ink : c.line, backgroundColor: on ? c.ink : "transparent" }]}>
                 <View style={[s.prDot, { backgroundColor: prColor(p) }]} />
                 <Text style={[s.prText, { color: on ? c.obsidian : c.inkMuted }]}>{p}</Text>
-              </Pressable>
+              </PressableScale>
             );
           })}
         </View>
@@ -90,14 +91,14 @@ export default function CalendarScreen() {
               <View style={{ gap: 8 }}>
                 {items.map((e) => (
                   <View key={e.id} style={[s.item, { borderColor: c.line, backgroundColor: c.card }]}>
-                    <Pressable onPress={() => toggleCalendarEvent(e.id)} style={[s.box, { borderColor: e.done ? c.ink : c.line, backgroundColor: e.done ? c.ink : "transparent" }]}>
+                    <PressableScale onPress={() => toggleCalendarEvent(e.id)} style={[s.box, { borderColor: e.done ? c.ink : c.line, backgroundColor: e.done ? c.ink : "transparent" }]}>
                       {e.done && <Ionicons name="checkmark" size={13} color={c.obsidian} />}
-                    </Pressable>
+                    </PressableScale>
                     <View style={[s.prDot, { backgroundColor: prColor(e.priority) }]} />
                     <Text style={[s.itemText, { color: c.ink, textDecorationLine: e.done ? "line-through" : "none", opacity: e.done ? 0.5 : 1 }]} numberOfLines={2}>{e.title}</Text>
-                    <Pressable hitSlop={8} onPress={() => removeCalendarEvent(e.id)}>
+                    <PressableScale hitSlop={8} onPress={() => removeCalendarEvent(e.id)}>
                       <Ionicons name="trash-outline" size={15} color={c.inkFaint} />
-                    </Pressable>
+                    </PressableScale>
                   </View>
                 ))}
               </View>

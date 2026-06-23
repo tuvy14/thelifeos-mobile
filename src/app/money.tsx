@@ -4,6 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 
 import { SubScreen } from "@/components/sub-screen";
 import { Card } from "@/components/ui";
+import { PressableScale } from "@/components/anim";
 import { useTheme, radius, fonts, type Palette } from "@/lib/theme";
 import {
   useStore,
@@ -97,9 +98,9 @@ export default function MoneyScreen() {
               />
             </View>
           ) : (
-            <Pressable onPress={() => { setGoalInput(moneyGoal ? String(moneyGoal) : ""); setEditingGoal(true); }}>
+            <PressableScale onPress={() => { setGoalInput(moneyGoal ? String(moneyGoal) : ""); setEditingGoal(true); }}>
               <Text style={s.link}>{moneyGoal ? "Edit" : "Set goal"}</Text>
-            </Pressable>
+            </PressableScale>
           )}
         </View>
         {moneyGoal > 0 ? (
@@ -170,13 +171,13 @@ export default function MoneyScreen() {
       <Card style={{ marginTop: 14 }}>
         <View style={[s.segment, { borderColor: c.line, backgroundColor: c.fill }]}>
           {(["income", "expense"] as const).map((t) => (
-            <Pressable
+            <PressableScale
               key={t}
               onPress={() => { setTab(t); setCategory((t === "income" ? REVENUE_CATEGORIES : EXPENSE_CATEGORIES)[0]); }}
               style={[s.segBtn, tab === t && { backgroundColor: c.ink }]}
             >
               <Text style={[s.segText, { color: tab === t ? c.obsidian : c.inkMuted }]}>{t[0].toUpperCase() + t.slice(1)}</Text>
-            </Pressable>
+            </PressableScale>
           ))}
         </View>
         <View style={s.formRow}>
@@ -194,23 +195,23 @@ export default function MoneyScreen() {
           {cats.map((cat) => {
             const on = category === cat;
             return (
-              <Pressable key={cat} onPress={() => setCategory(cat)} style={[s.catChip, { borderColor: on ? c.ink : c.line, backgroundColor: on ? c.ink : "transparent" }]}>
+              <PressableScale key={cat} onPress={() => setCategory(cat)} style={[s.catChip, { borderColor: on ? c.ink : c.line, backgroundColor: on ? c.ink : "transparent" }]}>
                 <Text style={[s.catChipText, { color: on ? c.obsidian : c.inkMuted }]}>{cat}</Text>
-              </Pressable>
+              </PressableScale>
             );
           })}
         </ScrollView>
         <View style={[s.rowCenter, { marginTop: 12, justifyContent: "space-between" }]}>
           {tab === "income" ? (
-            <Pressable onPress={() => setRecurring((r) => !r)} style={[s.recurring, { borderColor: recurring ? c.ink : c.line, backgroundColor: recurring ? c.ink : c.fill }]}>
+            <PressableScale onPress={() => setRecurring((r) => !r)} style={[s.recurring, { borderColor: recurring ? c.ink : c.line, backgroundColor: recurring ? c.ink : c.fill }]}>
               <Ionicons name="repeat-outline" size={14} color={recurring ? c.obsidian : c.inkMuted} />
               <Text style={[s.recurringText, { color: recurring ? c.obsidian : c.inkMuted }]}>Recurring</Text>
-            </Pressable>
+            </PressableScale>
           ) : <View />}
-          <Pressable style={[s.addBtn, { backgroundColor: c.ink }]} onPress={submit}>
+          <PressableScale style={[s.addBtn, { backgroundColor: c.ink }]} onPress={submit}>
             <Ionicons name="add" size={16} color={c.obsidian} />
             <Text style={[s.addText, { color: c.obsidian }]}>Add {tab}</Text>
-          </Pressable>
+          </PressableScale>
         </View>
       </Card>
 
@@ -233,9 +234,9 @@ export default function MoneyScreen() {
                   <View style={[s.mrrTag, { backgroundColor: c.ink }]}><Text style={[s.mrrText, { color: c.obsidian }]}>MRR</Text></View>
                 ) : null}
               </View>
-              <Pressable hitSlop={8} onPress={() => (tab === "income" ? deleteRevenue(e.id) : deleteExpense(e.id))}>
+              <PressableScale hitSlop={8} onPress={() => (tab === "income" ? deleteRevenue(e.id) : deleteExpense(e.id))}>
                 <Ionicons name="trash-outline" size={14} color={c.inkFaint} />
-              </Pressable>
+              </PressableScale>
             </View>
           ))
         )}

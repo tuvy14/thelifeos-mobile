@@ -6,6 +6,7 @@ import { Ionicons } from "@expo/vector-icons";
 
 import { Screen } from "@/components/screen";
 import { Card, Eyebrow, IconBadge, Field } from "@/components/ui";
+import { PressableScale, Reveal } from "@/components/anim";
 import ScoreRing from "@/components/score-ring";
 import { useTheme, radius, fonts } from "@/lib/theme";
 import {
@@ -114,13 +115,13 @@ export default function TodayScreen() {
             </View>
           </View>
           {!log && (
-            <Pressable
+            <PressableScale
               style={[styles.ctaPill, { backgroundColor: c.ink }]}
               onPress={() => router.navigate("/check-in")}
             >
               <Text style={[styles.ctaText, { color: c.obsidian }]}>Check in</Text>
               <Ionicons name="arrow-forward" size={14} color={c.obsidian} />
-            </Pressable>
+            </PressableScale>
           )}
         </View>
       </Card>
@@ -134,14 +135,14 @@ export default function TodayScreen() {
           </View>
           <View style={styles.focusWrap}>
             {myFocus.map((f) => (
-              <Pressable
+              <PressableScale
                 key={f.id}
                 onPress={() => router.navigate(routeFor(f.views[0]))}
                 style={[styles.focusChip, { borderColor: c.line, backgroundColor: c.fill }]}
               >
                 <Text style={[styles.focusChipText, { color: c.ink }]}>{f.label}</Text>
                 <Ionicons name="arrow-forward" size={13} color={c.inkFaint} />
-              </Pressable>
+              </PressableScale>
             ))}
           </View>
         </Card>
@@ -162,12 +163,14 @@ export default function TodayScreen() {
 
       {/* Metrics */}
       <View style={styles.metricGrid}>
-        {metrics.map((m) => (
-          <Card key={m.label} style={styles.metricCard} padding={16}>
-            <IconBadge name={m.icon} />
-            <Text style={[styles.metricValue, { color: c.ink }]}>{m.value}</Text>
-            <Text style={[styles.metricLabel, { color: c.inkFaint }]}>{m.label}</Text>
-          </Card>
+        {metrics.map((m, idx) => (
+          <Reveal key={m.label} delay={120 + idx * 70} style={styles.metricCard}>
+            <Card padding={16}>
+              <IconBadge name={m.icon} />
+              <Text style={[styles.metricValue, { color: c.ink }]}>{m.value}</Text>
+              <Text style={[styles.metricLabel, { color: c.inkFaint }]}>{m.label}</Text>
+            </Card>
+          </Reveal>
         ))}
       </View>
 
@@ -178,9 +181,9 @@ export default function TodayScreen() {
             <Text style={[styles.cardTitle, { color: c.ink }]}>Small wins</Text>
             <Text style={[styles.cardSub, { color: c.inkMuted }]}>The day is built from these.</Text>
           </View>
-          <Pressable onPress={() => router.navigate("/wins")}>
+          <PressableScale onPress={() => router.navigate("/wins")} scaleTo={0.9}>
             <Text style={[styles.viewAll, { color: c.inkMuted }]}>View all →</Text>
-          </Pressable>
+          </PressableScale>
         </View>
         <View style={styles.winRow}>
           <Field
@@ -191,9 +194,9 @@ export default function TodayScreen() {
             returnKeyType="done"
             onSubmitEditing={submitWin}
           />
-          <Pressable style={[styles.addBtn, { backgroundColor: c.ink }]} onPress={submitWin}>
+          <PressableScale style={[styles.addBtn, { backgroundColor: c.ink }]} onPress={submitWin}>
             <Ionicons name="add" size={20} color={c.obsidian} />
-          </Pressable>
+          </PressableScale>
         </View>
         {todays.length > 0 && (
           <View style={{ marginTop: 14, gap: 8 }}>

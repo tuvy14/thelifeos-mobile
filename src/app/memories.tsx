@@ -3,6 +3,7 @@ import { Ionicons } from "@expo/vector-icons";
 
 import { SubScreen } from "@/components/sub-screen";
 import { Card, EmptyState } from "@/components/ui";
+import { Reveal } from "@/components/anim";
 import { useTheme, radius, fonts, type Palette } from "@/lib/theme";
 import { useStore, memoriesFor } from "@/lib/store";
 
@@ -32,8 +33,9 @@ export default function MemoriesScreen() {
         </View>
       ) : (
         <View style={{ marginTop: 16, gap: 12 }}>
-          {cards.map((m) => (
-            <Card key={m.days}>
+          {cards.map((m, idx) => (
+            <Reveal key={m.days} delay={idx * 60}>
+            <Card>
               <View style={s.head}>
                 <Text style={s.label}>{m.label.toUpperCase()}</Text>
                 <Text style={s.date}>{m.date}</Text>
@@ -56,6 +58,7 @@ export default function MemoriesScreen() {
                 </View>
               ))}
             </Card>
+            </Reveal>
           ))}
         </View>
       )}

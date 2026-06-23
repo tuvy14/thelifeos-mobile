@@ -14,6 +14,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 
 import { useTheme, radius, fonts, type Palette } from "@/lib/theme";
+import { PressableScale } from "@/components/anim";
 import {
   useStore,
   scoreFor,
@@ -93,12 +94,13 @@ export default function OttoChat() {
 
   return (
     <>
-      <Pressable
+      <PressableScale
         onPress={() => setOpen(true)}
+        scaleTo={0.9}
         style={[s.fab, { backgroundColor: c.ink, bottom: insets.bottom + 64 }]}
       >
         <Ionicons name="chatbubble-ellipses" size={22} color={c.obsidian} />
-      </Pressable>
+      </PressableScale>
 
       <Modal visible={open} transparent animationType="slide" onRequestClose={() => setOpen(false)}>
         <Pressable style={s.backdrop} onPress={() => setOpen(false)} />
@@ -139,9 +141,9 @@ export default function OttoChat() {
 
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.sugRow} contentContainerStyle={{ gap: 8, paddingHorizontal: 12 }}>
               {SUGGESTIONS.map((sug) => (
-                <Pressable key={sug} onPress={() => ask(sug)} style={[s.sug, { borderColor: c.line, backgroundColor: c.fill }]}>
+                <PressableScale key={sug} onPress={() => ask(sug)} style={[s.sug, { borderColor: c.line, backgroundColor: c.fill }]}>
                   <Text style={[s.sugText, { color: c.inkMuted }]}>{sug}</Text>
-                </Pressable>
+                </PressableScale>
               ))}
             </ScrollView>
 
@@ -155,9 +157,9 @@ export default function OttoChat() {
                 returnKeyType="send"
                 onSubmitEditing={() => ask(input)}
               />
-              <Pressable style={[s.send, { backgroundColor: c.ink }]} onPress={() => ask(input)}>
+              <PressableScale style={[s.send, { backgroundColor: c.ink }]} onPress={() => ask(input)}>
                 <Ionicons name="send" size={16} color={c.obsidian} />
-              </Pressable>
+              </PressableScale>
             </View>
           </View>
         </KeyboardAvoidingView>

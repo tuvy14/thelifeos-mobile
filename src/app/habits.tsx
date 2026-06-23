@@ -4,6 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 
 import { SubScreen } from "@/components/sub-screen";
 import { Card, EmptyState } from "@/components/ui";
+import { PressableScale, Reveal } from "@/components/anim";
 import { useTheme, radius, fonts, type Palette } from "@/lib/theme";
 import { useStore, isHabitDone, habitStreak, lastNDays, today } from "@/lib/store";
 
@@ -48,9 +49,9 @@ export default function HabitsScreen() {
             returnKeyType="done"
             onSubmitEditing={add}
           />
-          <Pressable style={[s.addBtn, { backgroundColor: c.ink }]} onPress={add}>
+          <PressableScale style={[s.addBtn, { backgroundColor: c.ink }]} onPress={add}>
             <Ionicons name="add" size={20} color={c.obsidian} />
-          </Pressable>
+          </PressableScale>
         </View>
       </Card>
 
@@ -60,13 +61,14 @@ export default function HabitsScreen() {
         </View>
       ) : (
         <View style={{ marginTop: 14, gap: 12 }}>
-          {habits.map((h) => {
+          {habits.map((h, idx) => {
             const done = isHabitDone(habitLog, h.id);
             const stk = habitStreak(habitLog, h.id);
             return (
-              <Card key={h.id} padding={14}>
+              <Reveal key={h.id} delay={idx * 50}>
+              <Card padding={14}>
                 <View style={s.habitRow}>
-                  <Pressable
+                  <PressableScale
                     onPress={() => toggleHabit(h.id)}
                     style={[s.toggle, { borderColor: done ? c.ink : c.line, backgroundColor: done ? c.ink : c.fill }]}
                   >
@@ -75,7 +77,7 @@ export default function HabitsScreen() {
                     ) : (
                       <Text style={{ fontSize: 18 }}>{h.emoji}</Text>
                     )}
-                  </Pressable>
+                  </PressableScale>
                   <View style={{ flex: 1, minWidth: 0 }}>
                     <Text style={s.habitName} numberOfLines={1}>{h.name}</Text>
                     <View style={s.streakRow}>
@@ -83,9 +85,9 @@ export default function HabitsScreen() {
                       <Text style={s.streakText}>{stk}-day streak</Text>
                     </View>
                   </View>
-                  <Pressable hitSlop={10} onPress={() => deleteHabit(h.id)}>
+                  <PressableScale hitSlop={10} onPress={() => deleteHabit(h.id)}>
                     <Ionicons name="trash-outline" size={15} color={c.inkFaint} />
-                  </Pressable>
+                  </PressableScale>
                 </View>
                 <View style={s.weekRow}>
                   {days.map((d) => {
@@ -99,6 +101,7 @@ export default function HabitsScreen() {
                   })}
                 </View>
               </Card>
+              </Reveal>
             );
           })}
         </View>

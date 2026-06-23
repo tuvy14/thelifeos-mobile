@@ -1,38 +1,37 @@
-import { View, Text, TextInput, Pressable, StyleSheet, type ViewStyle, type TextStyle, type StyleProp } from "react-native";
+import { View, Text, TextInput, StyleSheet, type ViewStyle, type TextStyle, type StyleProp } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import type { ReactNode } from "react";
 
 import { useTheme, radius, fonts, type Palette } from "@/lib/theme";
+import { PressableScale } from "@/components/anim";
 
-/* ── Glass surface card (web .surface-card) ── */
+/* ── Glass surface card (web .surface-card) — pressable when onPress is set ── */
 export function Card({
   children,
   style,
   padding = 20,
   rounded = radius.lg,
+  onPress,
 }: {
   children: ReactNode;
   style?: StyleProp<ViewStyle>;
   padding?: number;
   rounded?: number;
+  onPress?: () => void;
 }) {
   const { c } = useTheme();
-  return (
-    <View
-      style={[
-        {
-          backgroundColor: c.card,
-          borderColor: c.line,
-          borderWidth: 1,
-          borderRadius: rounded,
-          padding,
-        },
-        style,
-      ]}
-    >
-      {children}
-    </View>
-  );
+  const cardStyle: StyleProp<ViewStyle> = [
+    { backgroundColor: c.card, borderColor: c.line, borderWidth: 1, borderRadius: rounded, padding },
+    style,
+  ];
+  if (onPress) {
+    return (
+      <PressableScale style={cardStyle} onPress={onPress}>
+        {children}
+      </PressableScale>
+    );
+  }
+  return <View style={cardStyle}>{children}</View>;
 }
 
 /* ── Eyebrow (mono, uppercase, leading dash) ── */
@@ -93,10 +92,10 @@ export function PrimaryButton({
 }) {
   const { c } = useTheme();
   return (
-    <Pressable
+    <PressableScale
       onPress={onPress}
       disabled={disabled}
-      style={({ pressed }) => [
+      style={[
         {
           flexDirection: "row",
           alignItems: "center",
@@ -105,15 +104,14 @@ export function PrimaryButton({
           backgroundColor: c.ink,
           borderRadius: radius.md,
           paddingVertical: 15,
-          opacity: disabled ? 0.5 : pressed ? 0.9 : 1,
-          transform: [{ scale: pressed ? 0.98 : 1 }],
+          opacity: disabled ? 0.5 : 1,
         },
         style,
       ]}
     >
       {icon && <Ionicons name={icon} size={17} color={c.obsidian} />}
       <Text style={{ color: c.obsidian, fontFamily: fonts.displayBold, fontSize: 15 }}>{label}</Text>
-    </Pressable>
+    </PressableScale>
   );
 }
 

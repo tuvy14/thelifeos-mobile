@@ -4,6 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 
 import { SubScreen } from "@/components/sub-screen";
 import { Card, EmptyState, PrimaryButton } from "@/components/ui";
+import { PressableScale, Reveal } from "@/components/anim";
 import { useTheme, radius, fonts, type Palette } from "@/lib/theme";
 import { useStore } from "@/lib/store";
 
@@ -37,10 +38,10 @@ export default function GoalsScreen() {
         <Text style={s.sub}>
           {goals.length > 0 ? `${completed}/${goals.length} reached` : "Aim at something that matters."}
         </Text>
-        <Pressable style={[s.newBtn, { backgroundColor: c.ink }]} onPress={() => setOpen((o) => !o)}>
+        <PressableScale style={[s.newBtn, { backgroundColor: c.ink }]} onPress={() => setOpen((o) => !o)}>
           <Ionicons name="add" size={16} color={c.obsidian} />
           <Text style={[s.newText, { color: c.obsidian }]}>New goal</Text>
-        </Pressable>
+        </PressableScale>
       </View>
 
       {open && (
@@ -63,12 +64,12 @@ export default function GoalsScreen() {
             {CATEGORIES.map((cat) => {
               const on = category === cat;
               return (
-                <Pressable
+                <PressableScale
                   key={cat} onPress={() => setCategory(cat)}
                   style={[s.cat, { borderColor: on ? c.ink : c.line, backgroundColor: on ? c.ink : "transparent" }]}
                 >
                   <Text style={[s.catText, { color: on ? c.obsidian : c.inkMuted }]}>{cat}</Text>
-                </Pressable>
+                </PressableScale>
               );
             })}
           </View>
@@ -82,11 +83,12 @@ export default function GoalsScreen() {
         </View>
       ) : (
         <View style={{ marginTop: 14, gap: 12 }}>
-          {goals.map((g) => {
+          {goals.map((g, idx) => {
             const pct = Math.min(Math.round((g.current / g.target) * 100) || 0, 100);
             const done = g.current >= g.target;
             return (
-              <Card key={g.id} padding={16}>
+              <Reveal key={g.id} delay={idx * 50}>
+              <Card padding={16}>
                 <View style={s.goalTop}>
                   <View style={{ flex: 1 }}>
                     <View style={s.titleRow}>
@@ -101,9 +103,9 @@ export default function GoalsScreen() {
                       <Text style={s.catBadgeText}>{g.category}</Text>
                     </View>
                   </View>
-                  <Pressable hitSlop={10} onPress={() => deleteGoal(g.id)}>
+                  <PressableScale hitSlop={10} onPress={() => deleteGoal(g.id)}>
                     <Ionicons name="trash-outline" size={15} color={c.inkFaint} />
-                  </Pressable>
+                  </PressableScale>
                 </View>
 
                 <View style={s.numsRow}>
@@ -117,12 +119,12 @@ export default function GoalsScreen() {
                 </View>
 
                 <View style={s.stepRow}>
-                  <Pressable style={[s.step, { borderColor: c.line }]} onPress={() => step(g.id, g.current, g.target, -1)}>
+                  <PressableScale style={[s.step, { borderColor: c.line }]} onPress={() => step(g.id, g.current, g.target, -1)}>
                     <Ionicons name="remove" size={16} color={c.inkMuted} />
-                  </Pressable>
-                  <Pressable style={[s.step, { borderColor: c.line }]} onPress={() => step(g.id, g.current, g.target, 1)}>
+                  </PressableScale>
+                  <PressableScale style={[s.step, { borderColor: c.line }]} onPress={() => step(g.id, g.current, g.target, 1)}>
                     <Ionicons name="add" size={16} color={c.inkMuted} />
-                  </Pressable>
+                  </PressableScale>
                   <TextInput
                     defaultValue={String(g.current)}
                     onEndEditing={(e) => setGoalProgress(g.id, +e.nativeEvent.text || 0)}
@@ -131,6 +133,7 @@ export default function GoalsScreen() {
                   />
                 </View>
               </Card>
+              </Reveal>
             );
           })}
         </View>

@@ -4,6 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 
 import { SubScreen } from "@/components/sub-screen";
 import { Card, EmptyState } from "@/components/ui";
+import { PressableScale } from "@/components/anim";
 import { useTheme, radius, fonts, type Palette } from "@/lib/theme";
 import { useStore, workoutStreak, today } from "@/lib/store";
 
@@ -51,9 +52,9 @@ export default function FitnessScreen() {
           {TYPES.map((t) => {
             const on = type === t;
             return (
-              <Pressable key={t} onPress={() => setType(t)} style={[s.typeChip, { borderColor: on ? c.ink : c.line, backgroundColor: on ? c.ink : "transparent" }]}>
+              <PressableScale key={t} onPress={() => setType(t)} style={[s.typeChip, { borderColor: on ? c.ink : c.line, backgroundColor: on ? c.ink : "transparent" }]}>
                 <Text style={[s.typeChipText, { color: on ? c.obsidian : c.inkMuted }]}>{t}</Text>
-              </Pressable>
+              </PressableScale>
             );
           })}
         </ScrollView>
@@ -63,9 +64,9 @@ export default function FitnessScreen() {
             <Text style={s.durUnit}>min</Text>
           </View>
           <TextInput value={note} onChangeText={setNote} placeholder="Note (optional)" placeholderTextColor={c.inkFaint} style={[s.noteInput, { borderColor: c.line, backgroundColor: c.fill }]} />
-          <Pressable style={[s.addBtn, { backgroundColor: c.ink }]} onPress={add}>
+          <PressableScale style={[s.addBtn, { backgroundColor: c.ink }]} onPress={add}>
             <Ionicons name="add" size={20} color={c.obsidian} />
-          </Pressable>
+          </PressableScale>
         </View>
       </Card>
 
@@ -84,9 +85,9 @@ export default function FitnessScreen() {
                 <Text style={s.itemType}>{w.type}{w.duration ? ` · ${w.duration} min` : ""}</Text>
                 <Text style={s.itemSub}>{w.note ? w.note + " · " : ""}{w.date === today() ? "Today" : w.date}</Text>
               </View>
-              <Pressable hitSlop={8} onPress={() => deleteWorkout(w.id)}>
+              <PressableScale hitSlop={8} onPress={() => deleteWorkout(w.id)}>
                 <Ionicons name="trash-outline" size={15} color={c.inkFaint} />
-              </Pressable>
+              </PressableScale>
             </View>
           ))}
         </View>

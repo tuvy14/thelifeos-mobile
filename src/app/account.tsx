@@ -4,6 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 
 import { SubScreen } from "@/components/sub-screen";
 import { Card, Field, PrimaryButton } from "@/components/ui";
+import { PressableScale } from "@/components/anim";
 import { useTheme, radius, fonts, type Palette } from "@/lib/theme";
 import { useSync } from "@/lib/sync";
 
@@ -70,19 +71,19 @@ export default function AccountScreen() {
 
         <Text style={s.sectionNote}>Your data syncs automatically on open and after every change. You can also do it by hand:</Text>
         <View style={{ gap: 10 }}>
-          <Pressable style={s.action} disabled={busy} onPress={() => run(backupNow, "Backed up to the cloud.")}>
+          <PressableScale style={s.action} disabled={busy} onPress={() => run(backupNow, "Backed up to the cloud.")}>
             <Ionicons name="cloud-upload-outline" size={18} color={c.ink} />
             <Text style={s.actionText}>Back up now</Text>
-          </Pressable>
-          <Pressable style={s.action} disabled={busy} onPress={() => run(restoreNow, "Restored from the cloud.")}>
+          </PressableScale>
+          <PressableScale style={s.action} disabled={busy} onPress={() => run(restoreNow, "Restored from the cloud.")}>
             <Ionicons name="cloud-download-outline" size={18} color={c.ink} />
             <Text style={s.actionText}>Restore from cloud</Text>
-          </Pressable>
+          </PressableScale>
         </View>
         {msg && <Text style={[s.msg, err && { color: c.danger }]}>{msg}</Text>}
-        <Pressable style={s.signOut} disabled={busy} onPress={signOut}>
+        <PressableScale style={s.signOut} disabled={busy} onPress={signOut}>
           <Text style={s.signOutText}>Sign out</Text>
-        </Pressable>
+        </PressableScale>
       </SubScreen>
     );
   }
@@ -92,9 +93,9 @@ export default function AccountScreen() {
       <Text style={s.lead}>Sign in to back up your life and sync it across every device — same account as the web app.</Text>
       <View style={[s.segment, { borderColor: c.line, backgroundColor: c.fill }]}>
         {(["signin", "signup"] as const).map((m) => (
-          <Pressable key={m} style={[s.segBtn, mode === m && { backgroundColor: c.ink }]} onPress={() => setMode(m)}>
+          <PressableScale key={m} style={[s.segBtn, mode === m && { backgroundColor: c.ink }]} onPress={() => setMode(m)}>
             <Text style={[s.segText, { color: mode === m ? c.obsidian : c.inkMuted }]}>{m === "signin" ? "Sign in" : "Create account"}</Text>
-          </Pressable>
+          </PressableScale>
         ))}
       </View>
       <Card style={{ gap: 10 }}>

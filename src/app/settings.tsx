@@ -4,6 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 
 import { SubScreen } from "@/components/sub-screen";
 import { Card } from "@/components/ui";
+import { PressableScale } from "@/components/anim";
 import { useTheme, radius, fonts, type Palette } from "@/lib/theme";
 import { useStore } from "@/lib/store";
 import { useSync } from "@/lib/sync";
@@ -46,7 +47,7 @@ export default function SettingsScreen() {
   return (
     <SubScreen eyebrow="Control panel" title="Settings">
       <Text style={s.section}>APPEARANCE</Text>
-      <Pressable style={s.row} onPress={toggle}>
+      <PressableScale style={s.row} onPress={toggle}>
         <View style={[s.icon, { borderColor: c.line, backgroundColor: c.fill }]}>
           <Ionicons name={isDark ? "moon" : "sunny"} size={18} color={c.ink} />
         </View>
@@ -57,10 +58,10 @@ export default function SettingsScreen() {
         <View style={[s.toggle, { backgroundColor: isDark ? c.fillStrong : c.ink }]}>
           <View style={[s.knob, { backgroundColor: isDark ? c.ink : c.obsidian, alignSelf: isDark ? "flex-start" : "flex-end" }]} />
         </View>
-      </Pressable>
+      </PressableScale>
 
       <Text style={s.section}>SYNC</Text>
-      <Pressable style={s.row} onPress={() => router.navigate("/account")}>
+      <PressableScale style={s.row} onPress={() => router.navigate("/account")}>
         <View style={[s.icon, { borderColor: c.line, backgroundColor: c.fill }]}>
           <Ionicons name={email ? "cloud-done-outline" : "cloud-outline"} size={18} color={c.ink} />
         </View>
@@ -69,7 +70,7 @@ export default function SettingsScreen() {
           <Text style={s.rowSub}>{syncSub}</Text>
         </View>
         <Ionicons name="chevron-forward" size={18} color={c.inkFaint} />
-      </Pressable>
+      </PressableScale>
 
       <Text style={s.section}>YOUR DATA</Text>
       <Card padding={4}>
@@ -98,14 +99,14 @@ export default function SettingsScreen() {
         </View>
       </Card>
 
-      <Pressable style={[s.danger, { borderColor: c.lineStrong }]} onPress={() => Alert.alert("Redo onboarding?", "This clears your focus areas and shows the welcome flow again. Your data stays.", [{ text: "Cancel", style: "cancel" }, { text: "Redo", onPress: () => resetOnboarding() }])}>
+      <PressableScale style={[s.danger, { borderColor: c.lineStrong }]} onPress={() => Alert.alert("Redo onboarding?", "This clears your focus areas and shows the welcome flow again. Your data stays.", [{ text: "Cancel", style: "cancel" }, { text: "Redo", onPress: () => resetOnboarding() }])}>
         <Ionicons name="refresh-outline" size={16} color={c.ink} />
         <Text style={s.dangerText}>Redo onboarding</Text>
-      </Pressable>
-      <Pressable style={[s.danger, { borderColor: c.lineStrong, marginTop: 10 }]} onPress={confirmReset}>
+      </PressableScale>
+      <PressableScale style={[s.danger, { borderColor: c.lineStrong, marginTop: 10 }]} onPress={confirmReset}>
         <Ionicons name="trash-outline" size={16} color={c.danger} />
         <Text style={[s.dangerText, { color: c.danger }]}>Reset all data</Text>
-      </Pressable>
+      </PressableScale>
     </SubScreen>
   );
 }
