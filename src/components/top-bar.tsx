@@ -28,22 +28,20 @@ export default function TopBar() {
         </Text>
       </View>
       <View style={styles.actions}>
-        <PressableScale
+        <Pressable
           onPress={() => setPaletteOpen(true)}
-          style={[styles.iconBtn, { borderColor: c.line }]}
-          hitSlop={6}
-          scaleTo={0.9}
+          style={({ pressed }) => [styles.iconBtn, { borderColor: c.line, opacity: pressed ? 0.55 : 1 }]}
+          hitSlop={8}
         >
           <Ionicons name="search" size={16} color={c.inkMuted} />
-        </PressableScale>
-        <PressableScale
+        </Pressable>
+        <Pressable
           onPress={toggle}
-          style={[styles.iconBtn, { borderColor: c.line }]}
-          hitSlop={6}
-          scaleTo={0.9}
+          style={({ pressed }) => [styles.iconBtn, { borderColor: c.line, opacity: pressed ? 0.55 : 1 }]}
+          hitSlop={8}
         >
           <Ionicons name={isDark ? "sunny-outline" : "moon-outline"} size={16} color={c.inkMuted} />
-        </PressableScale>
+        </Pressable>
       </View>
       <CommandPalette visible={paletteOpen} onClose={() => setPaletteOpen(false)} />
     </BlurView>

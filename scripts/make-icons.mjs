@@ -16,20 +16,25 @@ mkdirSync(out, { recursive: true });
 const INK = "#fafafa";
 const OBSIDIAN = "#0a0a0b";
 
-/** TheLifeOS brand mark — the website's infinity-with-rings logo, centered.
- *  Source mark is viewBox 96×48; we scale + center it into a 1024 canvas. */
+/** TheLifeOS brand mark — the website's two-overlapping-circles icon (icon.svg)
+ *  with a soft glow, centered in a 1024 canvas. */
 function rings({ bg = "none", ink = INK, scale = 1 } = {}) {
   const bgRect = bg === "none" ? "" : `<rect width="1024" height="1024" fill="${bg}"/>`;
-  const markW = 96, markH = 48;
-  const fit = (640 / markW) * scale; // mark spans ~62% of the canvas at scale 1
-  const tx = (1024 - markW * fit) / 2;
-  const ty = (1024 - markH * fit) / 2;
+  const cx = 512, cy = 512;
+  const r = 176 * scale;   // 88 in the 512 source, doubled
+  const gap = 112 * scale; // centers offset ±112 from middle
+  const sw = 60 * scale;   // 30 in source, doubled
   return `<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
     ${bgRect}
-    <g transform="translate(${tx},${ty}) scale(${fit})" fill="none" stroke="${ink}" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M44 24C44 6 8 6 8 24C8 42 44 42 44 24C44 6 80 6 80 24C80 42 44 42 44 24"/>
-      <circle cx="62" cy="24" r="10.5"/>
-      <circle cx="62" cy="24" r="2.4" fill="${ink}"/>
+    <defs>
+      <filter id="g" x="-40%" y="-40%" width="180%" height="180%">
+        <feGaussianBlur stdDeviation="${14 * scale}" result="b"/>
+        <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+      </filter>
+    </defs>
+    <g filter="url(#g)" fill="none" stroke="${ink}" stroke-width="${sw}">
+      <circle cx="${cx - gap}" cy="${cy}" r="${r}"/>
+      <circle cx="${cx + gap}" cy="${cy}" r="${r}"/>
     </g>
   </svg>`;
 }

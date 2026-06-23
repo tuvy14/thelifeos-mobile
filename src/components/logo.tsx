@@ -1,31 +1,26 @@
 import { View } from "react-native";
-import Svg, { G, Path, Circle } from "react-native-svg";
+import Svg, { Circle } from "react-native-svg";
 
 import { useTheme } from "@/lib/theme";
 
-/** TheLifeOS brand mark — the website's infinity-with-rings logo, optional glow. */
-export default function Logo({ height = 32, glow = true }: { height?: number; glow?: boolean }) {
+/** TheLifeOS brand mark — the website's two-overlapping-circles icon (icon.svg),
+ *  white stroke + soft glow. */
+export default function Logo({ height = 30, glow = true }: { height?: number; glow?: boolean }) {
   const { c, isDark } = useTheme();
-  const width = height * 2; // viewBox is 96×48
+  // viewBox tightly framing the two r=88 circles centered at x=200 & 312, y=256.
+  const aspect = 318 / 206;
+  const width = height * aspect;
   return (
     <View
       style={
         glow && isDark
-          ? {
-              shadowColor: "#ffffff",
-              shadowOpacity: 0.55,
-              shadowRadius: 12,
-              shadowOffset: { width: 0, height: 0 },
-            }
+          ? { shadowColor: "#ffffff", shadowOpacity: 0.6, shadowRadius: 10, shadowOffset: { width: 0, height: 0 } }
           : undefined
       }
     >
-      <Svg width={width} height={height} viewBox="0 0 96 48" fill="none">
-        <G stroke={c.ink} strokeWidth={6.5} strokeLinecap="round" strokeLinejoin="round">
-          <Path d="M44 24C44 6 8 6 8 24C8 42 44 42 44 24C44 6 80 6 80 24C80 42 44 42 44 24" />
-          <Circle cx={62} cy={24} r={10.5} />
-          <Circle cx={62} cy={24} r={2.4} fill={c.ink} />
-        </G>
+      <Svg width={width} height={height} viewBox="97 153 318 206" fill="none">
+        <Circle cx={200} cy={256} r={88} stroke={c.ink} strokeWidth={30} />
+        <Circle cx={312} cy={256} r={88} stroke={c.ink} strokeWidth={30} />
       </Svg>
     </View>
   );
