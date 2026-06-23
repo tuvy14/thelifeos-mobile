@@ -4,7 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 
 import { SubScreen } from "@/components/sub-screen";
 import { Card, EmptyState } from "@/components/ui";
-import { PressableScale } from "@/components/anim";
+import { PressableScale, CountUp } from "@/components/anim";
 import { useTheme, radius, fonts, type Palette } from "@/lib/theme";
 import { useStore, workoutStreak, lastNDays, today } from "@/lib/store";
 
@@ -30,9 +30,9 @@ export default function FitnessScreen() {
   };
 
   const stats = [
-    { label: "Sessions", value: String(workouts.length) },
-    { label: "This week", value: String(weekCount) },
-    { label: "Streak", value: String(streak) },
+    { label: "Sessions", raw: workouts.length },
+    { label: "This week", raw: weekCount },
+    { label: "Streak", raw: streak },
   ];
 
   return (
@@ -42,7 +42,7 @@ export default function FitnessScreen() {
       <View style={s.statRow}>
         {stats.map((st) => (
           <Card key={st.label} style={{ flex: 1 }} padding={14}>
-            <Text style={s.statValue}>{st.value}</Text>
+            <CountUp value={st.raw} style={s.statValue} />
             <Text style={s.statLabel}>{st.label}</Text>
           </Card>
         ))}
@@ -89,7 +89,7 @@ export default function FitnessScreen() {
 
       {workouts.length === 0 ? (
         <View style={{ marginTop: 12 }}>
-          <EmptyState icon="barbell-outline" text="No workouts yet. Log your first session above." />
+          <EmptyState icon="barbell-outline" title="No sessions yet" text="Log your first workout — showing up is the win." />
         </View>
       ) : (
         <View style={{ marginTop: 16, gap: 8 }}>

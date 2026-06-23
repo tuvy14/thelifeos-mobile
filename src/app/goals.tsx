@@ -4,7 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 
 import { SubScreen } from "@/components/sub-screen";
 import { Card, EmptyState, PrimaryButton } from "@/components/ui";
-import { PressableScale, Reveal } from "@/components/anim";
+import { PressableScale, Reveal, ProgressBar } from "@/components/anim";
 import { useTheme, radius, fonts, type Palette } from "@/lib/theme";
 import { useStore } from "@/lib/store";
 
@@ -79,7 +79,7 @@ export default function GoalsScreen() {
 
       {goals.length === 0 && !open ? (
         <View style={{ marginTop: 12 }}>
-          <EmptyState icon="flag-outline" text="Set a target you care about — progress feels good when it's visible." />
+          <EmptyState icon="flag-outline" title="No goals yet" text="Set a target you care about — progress feels good when it's visible." />
         </View>
       ) : (
         <View style={{ marginTop: 14, gap: 12 }}>
@@ -114,9 +114,7 @@ export default function GoalsScreen() {
                   </Text>
                   <Text style={s.pct}>{pct}%</Text>
                 </View>
-                <View style={[s.track, { backgroundColor: c.fillStrong }]}>
-                  <View style={[s.fill, { width: `${pct}%`, backgroundColor: c.ink }]} />
-                </View>
+                <ProgressBar pct={pct} color={c.ink} track={c.fillStrong} height={8} style={{ marginTop: 8 }} />
 
                 <View style={s.stepRow}>
                   <PressableScale style={[s.step, { borderColor: c.line }]} onPress={() => step(g.id, g.current, g.target, -1)}>

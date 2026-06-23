@@ -71,7 +71,7 @@ export default function WinsScreen() {
 
       {sorted.length === 0 ? (
         <View style={{ marginTop: 12 }}>
-          <EmptyState icon="sparkles-outline" text="No wins yet. Start with one small thing that went well today — momentum compounds from here." />
+          <EmptyState icon="sparkles-outline" title="No wins yet" text="Start with one small thing that went well today — momentum compounds from here." />
         </View>
       ) : (
         <View style={{ marginTop: 20, gap: 20 }}>

@@ -39,7 +39,7 @@ export default function JournalScreen() {
 
       {journal.length === 0 ? (
         <View style={{ marginTop: 12 }}>
-          <EmptyState icon="book-outline" text="Nothing written yet. A sentence a day adds up." />
+          <EmptyState icon="book-outline" title="Nothing written yet" text="A sentence a day adds up. Clear your head — no one else sees this." />
         </View>
       ) : (
         <View style={{ marginTop: 16, gap: 12 }}>

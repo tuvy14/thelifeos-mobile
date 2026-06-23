@@ -4,7 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 
 import { SubScreen } from "@/components/sub-screen";
 import { Card } from "@/components/ui";
-import { PressableScale, Reveal } from "@/components/anim";
+import { PressableScale, Reveal, CountUp } from "@/components/anim";
 import { useTheme, radius, fonts, type Palette } from "@/lib/theme";
 import { useStore, scoreFor, todayLog, streak, scoreHistory, monthRevenue } from "@/lib/store";
 
@@ -92,11 +92,14 @@ export default function LeaderboardScreen() {
       <Card style={{ marginTop: 14, flexDirection: "row", justifyContent: "space-between" }}>
         <View>
           <Text style={s.miniLabel}>YOUR RANK</Text>
-          <Text style={s.rankBig}>#{yourRank}<Text style={s.rankOf}> of {board.length}</Text></Text>
+          <View style={{ flexDirection: "row", alignItems: "baseline" }}>
+            <CountUp value={yourRank} format={(n) => `#${Math.round(n)}`} style={s.rankBig} />
+            <Text style={s.rankOf}> of {board.length}</Text>
+          </View>
         </View>
         <View style={{ alignItems: "flex-end" }}>
           <Text style={s.miniLabel}>MOMENTUM</Text>
-          <Text style={s.momentum}>{board[yourRank - 1]?.points.toLocaleString()}</Text>
+          <CountUp value={board[yourRank - 1]?.points ?? 0} format={(n) => Math.round(n).toLocaleString()} style={s.momentum} />
         </View>
       </Card>
 

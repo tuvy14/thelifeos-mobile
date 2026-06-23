@@ -57,7 +57,7 @@ export default function HabitsScreen() {
 
       {habits.length === 0 ? (
         <View style={{ marginTop: 12 }}>
-          <EmptyState icon="flame-outline" text="Add one small daily habit — streaks are where momentum lives." />
+          <EmptyState icon="flame-outline" title="No habits yet" text="Add one small daily habit — streaks are where momentum lives." />
         </View>
       ) : (
         <View style={{ marginTop: 14, gap: 12 }}>

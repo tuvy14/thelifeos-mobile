@@ -2,6 +2,7 @@ import { View, Text, StyleSheet } from "react-native";
 
 import { Screen } from "@/components/screen";
 import { Card, Eyebrow } from "@/components/ui";
+import { CountUp } from "@/components/anim";
 import Heatmap from "@/components/heatmap";
 import { useTheme, radius, fonts } from "@/lib/theme";
 import {
@@ -28,14 +29,14 @@ export default function InsightsScreen() {
   const deepWork = Math.round(logs.reduce((a, l) => a + (l.deepWork || 0), 0));
 
   const stats = [
-    { label: "7-day avg", value: avg7 ? String(avg7) : "—" },
-    { label: "30-day avg", value: avg30 ? String(avg30) : "—" },
-    { label: "Streak", value: `${s}d` },
-    { label: "Best score", value: best ? String(best) : "—" },
-    { label: "Check-ins", value: String(logs.length) },
-    { label: "Total wins", value: String(wins.length) },
-    { label: "Deep work", value: `${deepWork}h` },
-    { label: "Workouts", value: String(workouts.length) },
+    { label: "7-day avg", raw: avg7, fmt: (n: number) => (avg7 ? String(Math.round(n)) : "—") },
+    { label: "30-day avg", raw: avg30, fmt: (n: number) => (avg30 ? String(Math.round(n)) : "—") },
+    { label: "Streak", raw: s, fmt: (n: number) => `${Math.round(n)}d` },
+    { label: "Best score", raw: best, fmt: (n: number) => (best ? String(Math.round(n)) : "—") },
+    { label: "Check-ins", raw: logs.length, fmt: (n: number) => String(Math.round(n)) },
+    { label: "Total wins", raw: wins.length, fmt: (n: number) => String(Math.round(n)) },
+    { label: "Deep work", raw: deepWork, fmt: (n: number) => `${Math.round(n)}h` },
+    { label: "Workouts", raw: workouts.length, fmt: (n: number) => String(Math.round(n)) },
   ];
 
   return (
@@ -82,7 +83,7 @@ export default function InsightsScreen() {
       <View style={styles.grid}>
         {stats.map((st) => (
           <Card key={st.label} style={styles.statCard} padding={16}>
-            <Text style={[styles.statValue, { color: c.ink }]}>{st.value}</Text>
+            <CountUp value={st.raw} format={st.fmt} style={[styles.statValue, { color: c.ink }]} />
             <Text style={[styles.statLabel, { color: c.inkFaint }]}>{st.label}</Text>
           </Card>
         ))}

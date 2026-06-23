@@ -4,7 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 
 import { SubScreen } from "@/components/sub-screen";
 import { Card } from "@/components/ui";
-import { PressableScale } from "@/components/anim";
+import { PressableScale, CountUp, ProgressBar } from "@/components/anim";
 import { useTheme, radius, fonts, type Palette } from "@/lib/theme";
 import {
   useStore,
@@ -57,10 +57,10 @@ export default function MoneyScreen() {
   const saveGoal = () => { setMoneyGoal(parseFloat(goalInput) || 0); setEditingGoal(false); };
 
   const stats = [
-    { label: "Revenue · mo", value: money(month), icon: "trending-up-outline" as const },
-    { label: "Expenses · mo", value: money(monthExp), icon: "receipt-outline" as const },
-    { label: "Net · mo", value: money(net), icon: "wallet-outline" as const },
-    { label: "MRR", value: money(mrrVal), icon: "repeat-outline" as const },
+    { label: "Revenue · mo", raw: month, icon: "trending-up-outline" as const },
+    { label: "Expenses · mo", raw: monthExp, icon: "receipt-outline" as const },
+    { label: "Net · mo", raw: net, icon: "wallet-outline" as const },
+    { label: "MRR", raw: mrrVal, icon: "repeat-outline" as const },
   ];
   const list: (RevenueEntry | Expense)[] = tab === "income" ? revenue : expenses;
 
@@ -76,7 +76,7 @@ export default function MoneyScreen() {
               <Ionicons name={st.icon} size={13} color={c.inkFaint} />
               <Text style={s.statLabel}>{st.label.toUpperCase()}</Text>
             </View>
-            <Text style={s.statValue}>{st.value}</Text>
+            <CountUp value={st.raw} format={money} style={s.statValue} />
           </Card>
         ))}
       </View>
@@ -105,9 +105,7 @@ export default function MoneyScreen() {
         </View>
         {moneyGoal > 0 ? (
           <>
-            <View style={[s.track, { backgroundColor: c.fillStrong, marginTop: 12 }]}>
-              <View style={[s.fill, { width: `${goalPct}%`, backgroundColor: c.ink }]} />
-            </View>
+            <ProgressBar pct={goalPct} color={c.ink} track={c.fillStrong} height={9} rounded={5} style={{ marginTop: 12 }} />
             <View style={[s.rowBetween, { marginTop: 8 }]}>
               <Text style={s.muted}>{money(month)} of {money(moneyGoal)}</Text>
               <Text style={s.ink}>{goalPct}%</Text>
@@ -159,9 +157,7 @@ export default function MoneyScreen() {
                 <Text style={s.ink}>{x.category}</Text>
                 <Text style={s.muted}>{money(x.amount)} · {Math.round((x.amount / catTotal) * 100)}%</Text>
               </View>
-              <View style={[s.track, { backgroundColor: c.fillStrong }]}>
-                <View style={[s.fill, { width: `${(x.amount / catTotal) * 100}%`, backgroundColor: c.ink }]} />
-              </View>
+              <ProgressBar pct={(x.amount / catTotal) * 100} color={c.ink} track={c.fillStrong} height={9} rounded={5} />
             </View>
           ))}
         </Card>

@@ -159,15 +159,34 @@ export function Chip({ children, active }: { children: ReactNode; active?: boole
 export function EmptyState({
   icon,
   text,
+  title,
 }: {
   icon: keyof typeof Ionicons.glyphMap;
   text: string;
+  title?: string;
 }) {
   const { c } = useTheme();
   return (
-    <View style={{ alignItems: "center", gap: 12, paddingVertical: 48 }}>
-      <Ionicons name={icon} size={30} color={c.inkFaint} />
-      <Text style={{ color: c.inkFaint, fontFamily: fonts.body, fontSize: 14, textAlign: "center" }}>
+    <View style={{ alignItems: "center", gap: 8, paddingVertical: 44, paddingHorizontal: 24 }}>
+      <View
+        style={{
+          width: 64,
+          height: 64,
+          borderRadius: 32,
+          borderWidth: 1,
+          borderColor: c.line,
+          backgroundColor: c.fill,
+          alignItems: "center",
+          justifyContent: "center",
+          marginBottom: 8,
+        }}
+      >
+        <Ionicons name={icon} size={26} color={c.inkMuted} />
+      </View>
+      {title && (
+        <Text style={{ color: c.ink, fontFamily: fonts.display, fontSize: 16, textAlign: "center" }}>{title}</Text>
+      )}
+      <Text style={{ color: c.inkFaint, fontFamily: fonts.body, fontSize: 13.5, textAlign: "center", lineHeight: 20, maxWidth: 280 }}>
         {text}
       </Text>
     </View>

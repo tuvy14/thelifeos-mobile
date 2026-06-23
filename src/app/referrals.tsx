@@ -4,7 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 
 import { SubScreen } from "@/components/sub-screen";
 import { Card, EmptyState } from "@/components/ui";
-import { PressableScale } from "@/components/anim";
+import { PressableScale, CountUp } from "@/components/anim";
 import { useTheme, radius, fonts, type Palette } from "@/lib/theme";
 import { useStore, REFERRAL_PERCENT, REFERRAL_MONTHLY, REFERRAL_DISCOUNT } from "@/lib/store";
 
@@ -19,9 +19,9 @@ export default function ReferralsScreen() {
   const subscribed = referrals.filter((r) => r.status === "subscribed");
   const monthly = subscribed.reduce((a, r) => a + r.monthlyEarn, 0);
   const stats = [
-    { label: "Invited", value: String(referrals.length) },
-    { label: "Subscribed", value: String(subscribed.length) },
-    { label: "Earning · mo", value: `$${monthly}` },
+    { label: "Invited", raw: referrals.length, fmt: (n: number) => String(Math.round(n)) },
+    { label: "Subscribed", raw: subscribed.length, fmt: (n: number) => String(Math.round(n)) },
+    { label: "Earning · mo", raw: monthly, fmt: (n: number) => `$${Math.round(n)}` },
   ];
 
   const invite = () => { if (!name.trim()) return; addReferral(name); setName(""); };
@@ -41,7 +41,7 @@ export default function ReferralsScreen() {
       <View style={s.statRow}>
         {stats.map((st) => (
           <Card key={st.label} style={{ flex: 1 }} padding={14}>
-            <Text style={s.statVal}>{st.value}</Text>
+            <CountUp value={st.raw} format={st.fmt} style={s.statVal} />
             <Text style={s.statLabel}>{st.label}</Text>
           </Card>
         ))}
@@ -59,7 +59,7 @@ export default function ReferralsScreen() {
 
       {referrals.length === 0 ? (
         <View style={{ marginTop: 12 }}>
-          <EmptyState icon="gift-outline" text="No invites yet. Add a friend you've referred to track it." />
+          <EmptyState icon="gift-outline" title="No invites yet" text="Add a friend you've referred to track your earnings here." />
         </View>
       ) : (
         <View style={{ marginTop: 16, gap: 8 }}>

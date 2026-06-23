@@ -29,7 +29,7 @@ export default function MemoriesScreen() {
 
       {cards.length === 0 ? (
         <View style={{ marginTop: 12 }}>
-          <EmptyState icon="time-outline" text="Your memories will appear here as you check in over time." />
+          <EmptyState icon="time-outline" title="No memories yet" text="As you check in over time, your past days show up here — progress is easy to forget." />
         </View>
       ) : (
         <View style={{ marginTop: 16, gap: 12 }}>

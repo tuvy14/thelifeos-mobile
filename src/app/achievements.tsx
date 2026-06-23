@@ -3,7 +3,7 @@ import { Ionicons } from "@expo/vector-icons";
 
 import { SubScreen } from "@/components/sub-screen";
 import { Card } from "@/components/ui";
-import { Reveal } from "@/components/anim";
+import { Reveal, ProgressBar } from "@/components/anim";
 import { useTheme, radius, fonts, type Palette } from "@/lib/theme";
 import { useStore, getAchievements } from "@/lib/store";
 
@@ -40,9 +40,7 @@ export default function AchievementsScreen() {
                 </View>
               ) : (
                 <>
-                  <View style={[s.track, { backgroundColor: c.fillStrong }]}>
-                    <View style={[s.fill, { width: `${pct}%`, backgroundColor: c.ink }]} />
-                  </View>
+                  <ProgressBar pct={pct} color={c.ink} track={c.fillStrong} height={6} rounded={3} style={{ marginTop: 10 }} />
                   <Text style={s.progress}>{Math.min(a.current, a.goal)}/{a.goal}</Text>
                 </>
               )}

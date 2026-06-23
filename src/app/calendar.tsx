@@ -81,7 +81,7 @@ export default function CalendarScreen() {
 
       {sorted.length === 0 ? (
         <View style={{ marginTop: 12 }}>
-          <EmptyState icon="calendar-outline" text="Nothing scheduled. Add your first task above." />
+          <EmptyState icon="calendar-outline" title="Nothing scheduled" text="Add your first task or event above and stay ahead of your week." />
         </View>
       ) : (
         <View style={{ marginTop: 20, gap: 18 }}>
