@@ -43,18 +43,18 @@ export const DARK: Palette = {
 };
 
 export const LIGHT: Palette = {
-  obsidian: "rgb(248,248,249)",
+  obsidian: "rgb(240,241,244)", // soft light-gray app bg so white cards lift off it
   surface: "rgb(255,255,255)",
-  card: "rgba(0,0,0,0.022)",
-  fill: "rgba(0,0,0,0.04)",
-  fillStrong: "rgba(0,0,0,0.06)",
+  card: "rgba(255,255,255,0.78)", // frosted white card (over blur)
+  fill: "rgba(0,0,0,0.045)",
+  fillStrong: "rgba(0,0,0,0.07)",
   ink: "rgb(17,17,20)",
-  inkMuted: "rgb(34,34,40)",
-  inkFaint: "rgb(96,96,105)",
-  line: "rgba(0,0,0,0.10)",
-  lineStrong: "rgba(0,0,0,0.20)",
+  inkMuted: "rgb(60,60,68)",
+  inkFaint: "rgb(120,120,130)",
+  line: "rgba(0,0,0,0.12)",
+  lineStrong: "rgba(0,0,0,0.24)",
   chipBg: "rgba(17,17,20,0.08)",
-  chipBorder: "rgba(17,17,20,0.25)",
+  chipBorder: "rgba(17,17,20,0.28)",
   danger: "#d4353b",
 };
 

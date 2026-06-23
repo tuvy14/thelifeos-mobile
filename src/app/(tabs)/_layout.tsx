@@ -11,7 +11,7 @@ export default function TabsLayout() {
       screenOptions={{
         headerShown: true,
         header: () => <TopBar />,
-        sceneStyle: { backgroundColor: "transparent" },
+        sceneStyle: { backgroundColor: c.obsidian },
         tabBarActiveTintColor: c.ink,
         tabBarInactiveTintColor: c.inkFaint,
         tabBarStyle: { backgroundColor: c.obsidian, borderTopColor: c.line },

@@ -1,4 +1,4 @@
-import { useCallback, useRef } from "react";
+import { useCallback, useRef, useState } from "react";
 import { Animated, ScrollView, View, Text, StyleSheet } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router, useFocusEffect } from "expo-router";
@@ -8,6 +8,7 @@ import type { ReactNode } from "react";
 import { useTheme, radius, fonts } from "@/lib/theme";
 import { Eyebrow } from "@/components/ui";
 import { PressableScale, EASE } from "@/components/anim";
+import ShaderBackdrop from "@/components/shader-backdrop";
 
 /** Stack screen wrapper: safe-area scroll + back chevron + eyebrow/title header. */
 export function SubScreen({
@@ -21,11 +22,13 @@ export function SubScreen({
 }) {
   const insets = useSafeAreaInsets();
   const { c } = useTheme();
+  const [focused, setFocused] = useState(false);
   const opacity = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(12)).current;
 
   useFocusEffect(
     useCallback(() => {
+      setFocused(true);
       opacity.setValue(0);
       translateY.setValue(12);
       const anim = Animated.parallel([
@@ -33,18 +36,23 @@ export function SubScreen({
         Animated.timing(translateY, { toValue: 0, duration: 480, easing: EASE, useNativeDriver: true }),
       ]);
       anim.start();
-      return () => anim.stop();
+      return () => {
+        anim.stop();
+        setFocused(false);
+      };
     }, [opacity, translateY])
   );
 
   return (
-    <ScrollView
-      style={{ flex: 1, backgroundColor: "transparent" }}
-      contentContainerStyle={{ paddingTop: insets.top + 8, paddingHorizontal: 20, paddingBottom: 56 }}
-      keyboardShouldPersistTaps="handled"
-      showsVerticalScrollIndicator={false}
-    >
-      <Animated.View style={{ opacity, transform: [{ translateY }] }}>
+    <View style={{ flex: 1, backgroundColor: c.obsidian }}>
+      {focused && <ShaderBackdrop />}
+      <ScrollView
+        style={{ flex: 1, backgroundColor: "transparent" }}
+        contentContainerStyle={{ paddingTop: insets.top + 8, paddingHorizontal: 20, paddingBottom: 56 }}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        <Animated.View style={{ opacity, transform: [{ translateY }] }}>
         <PressableScale
           style={styles.back}
           hitSlop={10}
@@ -57,8 +65,9 @@ export function SubScreen({
         <Eyebrow>{eyebrow}</Eyebrow>
         <Text style={[styles.title, { color: c.ink }]}>{title}</Text>
         <View style={{ marginTop: 18 }}>{children}</View>
-      </Animated.View>
-    </ScrollView>
+        </Animated.View>
+      </ScrollView>
+    </View>
   );
 }
 

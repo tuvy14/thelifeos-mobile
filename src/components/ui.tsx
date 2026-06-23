@@ -21,26 +21,35 @@ export function Card({
   onPress?: () => void;
 }) {
   const { c, isDark } = useTheme();
-  const content = (
+  // Shadow lives on an outer wrapper (the BlurView clips its own shadow via
+  // overflow:hidden, which it needs to round the blur).
+  const wrapper: StyleProp<ViewStyle> = [
+    {
+      borderRadius: rounded,
+      shadowColor: "#000",
+      shadowOpacity: isDark ? 0.22 : 0.1,
+      shadowRadius: 14,
+      shadowOffset: { width: 0, height: 8 },
+    },
+    style,
+  ];
+  const inner = (
     <BlurView
-      intensity={isDark ? 22 : 40}
+      intensity={isDark ? 22 : 45}
       tint={isDark ? "dark" : "light"}
-      style={[
-        { borderColor: c.line, borderWidth: 1, borderRadius: rounded, padding, overflow: "hidden", backgroundColor: c.card },
-        style,
-      ]}
+      style={{ borderColor: c.line, borderWidth: 1, borderRadius: rounded, padding, overflow: "hidden", backgroundColor: c.card }}
     >
       {children}
     </BlurView>
   );
   if (onPress) {
     return (
-      <PressableScale style={{ borderRadius: rounded }} onPress={onPress}>
-        {content}
+      <PressableScale style={wrapper} onPress={onPress}>
+        {inner}
       </PressableScale>
     );
   }
-  return content;
+  return <View style={wrapper}>{inner}</View>;
 }
 
 /* ── Eyebrow (mono, uppercase, leading dash) ── */

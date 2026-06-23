@@ -24,7 +24,7 @@ import { ThemeProvider, useTheme } from "@/lib/theme";
 import { CelebrationProvider } from "@/lib/celebrate";
 import Onboarding from "@/components/onboarding";
 import OttoChat from "@/components/otto-chat";
-import ShaderBackdrop from "@/components/shader-backdrop";
+import Splash from "@/components/splash";
 
 function Shell() {
   const { c, isDark } = useTheme();
@@ -38,16 +38,19 @@ function Shell() {
     if (ready && !isOnboarded(profile)) setOnboarding(true);
   }, [ready, profile]);
   const showOnboarding = onboarding === true;
+
+  // Branded loading screen until local data has hydrated.
+  if (!ready) return <Splash />;
+
   return (
     <View style={{ flex: 1, backgroundColor: c.obsidian }}>
       <StatusBar style={isDark ? "light" : "dark"} />
-      {/* Live WebGL dot-shader (dark) / soft gradient (light) behind screens. */}
-      <ShaderBackdrop />
-      {/* Navigator stays mounted so routing context always exists. */}
+      {/* Each screen paints its own opaque base + shader behind its content, so
+          sibling tab screens never bleed through. */}
       <Stack
         screenOptions={{
           headerShown: false,
-          contentStyle: { backgroundColor: "transparent" },
+          contentStyle: { backgroundColor: c.obsidian },
         }}
       />
       {/* Otto coach FAB — hidden during onboarding. */}
@@ -76,7 +79,7 @@ export default function RootLayout() {
     JetBrainsMono_600SemiBold,
   });
 
-  if (!loaded) return <View style={{ flex: 1, backgroundColor: "#0a0a0b" }} />;
+  if (!loaded) return <Splash />;
 
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: "#0a0a0b" }}>
