@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Animated, View, Text } from "react-native";
 import Svg, { Circle } from "react-native-svg";
 
@@ -24,12 +24,15 @@ export default function ScoreRing({
   const circ = 2 * Math.PI * r;
 
   const progress = useRef(new Animated.Value(0)).current;
+  const [shown, setShown] = useState(0);
   useEffect(() => {
+    const id = progress.addListener(({ value }) => setShown(Math.round(value * 100)));
     Animated.timing(progress, {
       toValue: clamped / 100,
       duration: 900,
       useNativeDriver: false,
     }).start();
+    return () => progress.removeListener(id);
   }, [clamped, progress]);
 
   const offset = progress.interpolate({
@@ -64,7 +67,7 @@ export default function ScoreRing({
       {showLabel && (
         <View style={{ position: "absolute", alignItems: "center", justifyContent: "center" }}>
           <Text style={{ fontFamily: fonts.displayBold, fontSize: size * 0.37, color: c.ink, letterSpacing: -1 }}>
-            {Math.round(score)}
+            {shown}
           </Text>
           <Text style={{ fontFamily: fonts.mono, fontSize: 10, color: c.inkFaint, marginTop: -2 }}>
             / 100
