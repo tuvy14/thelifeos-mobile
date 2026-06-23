@@ -1,5 +1,6 @@
 import { useEffect, useRef, type ReactNode } from "react";
 import { Animated, Easing, Pressable, type StyleProp, type ViewStyle } from "react-native";
+import * as Haptics from "expo-haptics";
 
 /** The web app's signature easing (framer `[0.16, 1, 0.3, 1]`). */
 export const EASE = Easing.bezier(0.16, 1, 0.3, 1);
@@ -29,13 +30,18 @@ export function PressableScale({
   const scale = useRef(new Animated.Value(1)).current;
   const to = (v: number) =>
     Animated.spring(scale, { toValue: v, useNativeDriver: true, speed: 40, bounciness: 0 }).start();
+  const press = () => {
+    if (disabled) return;
+    to(scaleTo);
+    try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch { /* ignore */ }
+  };
   return (
     <AnimatedPressable
       onPress={onPress}
       onLongPress={onLongPress}
       disabled={disabled}
       hitSlop={hitSlop}
-      onPressIn={() => !disabled && to(scaleTo)}
+      onPressIn={press}
       onPressOut={() => to(1)}
       style={[style, { transform: [{ scale }] }]}
     >
