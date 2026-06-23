@@ -20,10 +20,20 @@ if ! sudo gem install cocoapods -n /usr/local/bin --no-document; then
   brew install cocoapods
 fi
 
-echo "=== Step 4: pod install ==="
+echo "=== Step 4: Add pod to PATH permanently ==="
+SHELL_RC="$HOME/.zshrc"
+PATH_LINE='export PATH="/usr/local/bin:/opt/homebrew/bin:$PATH"'
+if ! grep -qF '/usr/local/bin:/opt/homebrew/bin' "$SHELL_RC" 2>/dev/null; then
+  echo "$PATH_LINE" >> "$SHELL_RC"
+  echo "Added PATH export to $SHELL_RC"
+fi
+export PATH="/usr/local/bin:/opt/homebrew/bin:$PATH"
+
+echo "=== Step 5: pod install ==="
 cd "$(dirname "$0")/ios"
 pod install
 cd ..
 
 echo ""
-echo "✅ Done. Now run: npx expo run:ios"
+echo "✅ Done. Now run:"
+echo "   export PATH=\"/usr/local/bin:/opt/homebrew/bin:\$PATH\" && npx expo run:ios"
