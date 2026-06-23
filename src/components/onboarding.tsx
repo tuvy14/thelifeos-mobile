@@ -35,7 +35,7 @@ const FOCUS_ICON: Record<string, keyof typeof Ionicons.glyphMap> = {
   habits: "repeat-outline", learn: "book-outline",
 };
 
-const STEPS = ["welcome", "goals", "challenge", "dailyTime", "level", "rhythm", "generating", "ready"] as const;
+const STEPS = ["welcome", "goals", "challenge", "dailyTime", "level", "rhythm", "generating"] as const;
 type Step = (typeof STEPS)[number];
 
 interface Question {
@@ -183,7 +183,29 @@ export default function Onboarding({ onDone }: { onDone: () => void }) {
 
   const next = () => setI((v) => Math.min(STEPS.length - 1, v + 1));
   const back = () => setI((v) => Math.max(0, v - 1));
-  const toggle = (id: string) => setSelected((x) => (x.includes(id) ? x.filter((y) => y !== id) : [...x, id]));
+
+  // Focus step auto-continues like the question steps — no "Next" press. We
+  // debounce so multi-select still works: each tap (re)starts the timer, and we
+  // advance ~1.1s after the LAST selection. Deselecting back to zero cancels it.
+  const advanceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const clearAdvance = () => {
+    if (advanceTimer.current) {
+      clearTimeout(advanceTimer.current);
+      advanceTimer.current = null;
+    }
+  };
+  const toggle = (id: string) =>
+    setSelected((x) => {
+      const nextSel = x.includes(id) ? x.filter((y) => y !== id) : [...x, id];
+      clearAdvance();
+      if (nextSel.length > 0) advanceTimer.current = setTimeout(next, 1100);
+      return nextSel;
+    });
+  // Cancel any pending auto-advance when we leave the focus step (e.g. Back) or unmount.
+  useEffect(() => {
+    if (step !== "goals") clearAdvance();
+    return clearAdvance;
+  }, [step]);
   const answer = (key: string, val: string) => {
     setAnswers((a) => ({ ...a, [key]: val }));
     setTimeout(next, 280);
@@ -199,13 +221,13 @@ export default function Onboarding({ onDone }: { onDone: () => void }) {
     }
     setSubMsg(0);
     const sub = setInterval(() => setSubMsg((m) => Math.min(GEN_MSGS.length - 1, m + 1)), 640);
-    const done = setTimeout(() => setI(STEPS.indexOf("ready")), 3200);
+    // When generation finishes, go straight into the app — the Shell's paywall
+    // takes over from here. No manual "Continue to TheLifeOS" tap.
+    const done = setTimeout(() => onDone(), 3200);
     return () => { clearInterval(sub); clearTimeout(done); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step]);
 
-  const myFocus = FOCUS_AREAS.filter((f) => selected.includes(f.id));
-  const seededGoals = myFocus.reduce((a, f) => a + f.seedGoals.length, 0);
   const showDots = i <= 5;
 
   const cta = (label: string, onPress: () => void, disabled?: boolean) => (
@@ -218,7 +240,7 @@ export default function Onboarding({ onDone }: { onDone: () => void }) {
   // Short steps look best vertically centred; tall steps (the goal list and the
   // question lists) MUST top-align — centring a list taller than the viewport in
   // a ScrollView makes the top unreachable, which is why scroll felt broken.
-  const centerStep = step === "welcome" || step === "generating" || step === "ready";
+  const centerStep = step === "welcome" || step === "generating";
 
   return (
     <View style={{ flex: 1, backgroundColor: c.obsidian }}>
@@ -317,7 +339,9 @@ export default function Onboarding({ onDone }: { onDone: () => void }) {
                   );
                 })}
               </View>
-              {cta(selected.length ? `Continue (${selected.length})` : "Pick at least one", next, !selected.length)}
+              <Text style={s.autoHint}>
+                {selected.length ? `${selected.length} selected · continuing…` : "Tap what matters — we'll continue automatically"}
+              </Text>
               <Pressable onPress={back} style={s.backBtn}><Text style={s.backText}>← Back</Text></Pressable>
             </View>
           )}
@@ -355,38 +379,6 @@ export default function Onboarding({ onDone }: { onDone: () => void }) {
             </View>
           )}
 
-          {step === "ready" && (
-            <View style={{ alignItems: "center" }}>
-              <View style={[s.readyIcon, { borderColor: c.line, backgroundColor: c.fill }]}>
-                <Ionicons name="sparkles" size={24} color={c.ink} />
-              </View>
-              <Text style={s.h1}>{name ? `You're all set, ${name}` : "Your plan is ready"}</Text>
-              <Text style={s.lead}>We&apos;ve tailored your dashboard to what matters to you.</Text>
-              <View style={s.readyCards}>
-                {myFocus.length > 0 && (
-                  <View style={[s.readyCard, { backgroundColor: c.card, borderColor: c.line }]}>
-                    <Text style={s.readyLabel}>YOUR FOCUS</Text>
-                    <View style={s.focusChips}>
-                      {myFocus.map((f) => (
-                        <View key={f.id} style={[s.focusChip, { borderColor: c.line, backgroundColor: c.fill }]}>
-                          <Text style={s.focusChipText}>{f.label}</Text>
-                        </View>
-                      ))}
-                    </View>
-                  </View>
-                )}
-                <View style={[s.readyRow, { backgroundColor: c.card, borderColor: c.line }]}>
-                  <View style={[s.readyRowIcon, { borderColor: c.line, backgroundColor: c.fill }]}>
-                    <Ionicons name="checkmark" size={16} color={c.ink} />
-                  </View>
-                  <Text style={s.readyRowText}>
-                    <Text style={{ color: c.ink }}>{seededGoals} starter goal{seededGoals === 1 ? "" : "s"}</Text> added to keep you moving
-                  </Text>
-                </View>
-              </View>
-              {cta("Enter TheLifeOS", onDone)}
-            </View>
-          )}
         </Animated.View>
       </ScrollView>
     </View>
@@ -420,6 +412,7 @@ const makeStyles = (c: Palette) =>
     adminInput: { flex: 1, borderWidth: 1, borderColor: c.line, backgroundColor: c.fill, borderRadius: radius.lg, paddingHorizontal: 16, paddingVertical: 13, color: c.ink, fontFamily: fonts.body, fontSize: 15 },
     adminGo: { width: 48, height: 48, borderRadius: radius.lg, alignItems: "center", justifyContent: "center" },
     note: { fontFamily: fonts.body, fontSize: 12.5, color: c.inkMuted, lineHeight: 18, textAlign: "center", marginTop: 16, maxWidth: 360 },
+    autoHint: { fontFamily: fonts.monoMedium, fontSize: 11, letterSpacing: 0.6, color: c.inkFaint, textAlign: "center", marginTop: 22, textTransform: "uppercase" },
     backBtn: { alignSelf: "center", marginTop: 16, padding: 6 },
     backText: { fontFamily: fonts.body, fontSize: 12, color: c.inkFaint },
     genSub: { fontFamily: fonts.displayBold, fontSize: 18, color: c.ink, marginTop: 20 },

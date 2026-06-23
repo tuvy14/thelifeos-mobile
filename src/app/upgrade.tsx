@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { View, Text, StyleSheet, ActivityIndicator } from "react-native";
+import { View, Text, StyleSheet, ActivityIndicator, Pressable } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 
@@ -31,6 +31,9 @@ export default function UpgradeScreen() {
   // On trial → the obvious upgrade is Lifetime; otherwise default to the trial plan.
   const [selected, setSelected] = useState<Plan["id"]>(onTrial ? "lifetime" : "monthly");
   const [busy, setBusy] = useState(false);
+  // Returning from Stripe drops us here; closing the sheet (X) must not grant —
+  // require an explicit confirmation tap before unlocking.
+  const [confirming, setConfirming] = useState(false);
 
   const plan = PLANS.find((p) => p.id === selected) ?? PLANS[0];
 
@@ -50,9 +53,11 @@ export default function UpgradeScreen() {
     setBusy(true);
     const res = await openCheckout(plan);
     setBusy(false);
-    if (res.ok) grant();
+    if (res.ok) setConfirming(true); // can't verify here — confirm before granting
     else if (res.reason === "unconfigured") celebrate("Checkout isn't set up yet — add your Stripe Payment Link.");
   };
+
+  const confirmPaid = () => { setConfirming(false); grant(); };
 
   /* ── Already fully paid / admin ── */
   if (paid) {
@@ -144,33 +149,61 @@ export default function UpgradeScreen() {
 
       {/* CTA */}
       <Reveal delay={320} style={{ marginTop: 24 }}>
-        <PressableScale style={[s.cta, { backgroundColor: c.ink }]} onPress={checkout} disabled={busy}>
-          {busy ? (
-            <ActivityIndicator color={c.obsidian} />
-          ) : (
-            <>
-              <Text style={[s.ctaText, { color: c.obsidian }]}>
-                {plan.id === "lifetime" ? `Get Lifetime · ${plan.price}` : `Start ${TRIAL_DAYS}-day free trial`}
-              </Text>
-              <Ionicons name="arrow-forward" size={16} color={c.obsidian} />
-            </>
-          )}
-        </PressableScale>
-        {ACCEPTED_METHODS.applePay ? (
-          <View style={s.methods}>
-            <Ionicons name="logo-apple" size={15} color={c.inkMuted} />
-            <Text style={[s.methodsText, { color: c.inkMuted }]}>Pay with {ACCEPTED_METHODS.label}</Text>
+        {confirming ? (
+          /* Back from Stripe — closing the sheet lands here too, so an accidental
+             X never unlocks. Only an explicit confirm grants. */
+          <View style={[s.confirm, { borderColor: c.line, backgroundColor: c.card }]}>
+            <View style={[s.confirmIcon, { borderColor: c.line, backgroundColor: c.fill }]}>
+              <Ionicons name="lock-open-outline" size={18} color={c.ink} />
+            </View>
+            <Text style={s.confirmTitle}>Did your payment go through?</Text>
+            <Text style={s.confirmSub}>
+              {plan.id === "monthly"
+                ? `Tap confirm only once Stripe shows it succeeded — your ${TRIAL_DAYS}-day free trial starts now.`
+                : "Tap confirm only once Stripe shows your payment succeeded."}
+            </Text>
+            <PressableScale style={[s.cta, { backgroundColor: c.ink, marginTop: 4 }]} onPress={confirmPaid}>
+              <Ionicons name="checkmark" size={16} color={c.obsidian} />
+              <Text style={[s.ctaText, { color: c.obsidian }]}>Yes — unlock now</Text>
+            </PressableScale>
+            <Pressable onPress={checkout} disabled={busy} style={s.confirmAlt}>
+              <Text style={[s.confirmAltText, { color: c.ink }]}>Reopen checkout</Text>
+            </Pressable>
+            <Pressable onPress={() => setConfirming(false)} style={s.confirmAlt}>
+              <Text style={[s.confirmAltText, { color: c.inkFaint }]}>I didn&apos;t complete payment</Text>
+            </Pressable>
           </View>
-        ) : null}
-        <Text style={[s.fine, { color: c.inkFaint }]}>
-          Secure checkout by Stripe.{" "}
-          {plan.id === "monthly" ? `No charge for ${TRIAL_DAYS} days — cancel anytime.` : "One payment, no subscription."}
-        </Text>
-        {!billingConfigured ? (
-          <Text style={[s.fine, { color: c.inkFaint, marginTop: 4 }]}>
-            (Set EXPO_PUBLIC_STRIPE_LIFETIME_URL / _MONTHLY_URL to enable purchases.)
-          </Text>
-        ) : null}
+        ) : (
+          <>
+            <PressableScale style={[s.cta, { backgroundColor: c.ink }]} onPress={checkout} disabled={busy}>
+              {busy ? (
+                <ActivityIndicator color={c.obsidian} />
+              ) : (
+                <>
+                  <Text style={[s.ctaText, { color: c.obsidian }]}>
+                    {plan.id === "lifetime" ? `Get Lifetime · ${plan.price}` : `Start ${TRIAL_DAYS}-day free trial`}
+                  </Text>
+                  <Ionicons name="arrow-forward" size={16} color={c.obsidian} />
+                </>
+              )}
+            </PressableScale>
+            {ACCEPTED_METHODS.applePay ? (
+              <View style={s.methods}>
+                <Ionicons name="logo-apple" size={15} color={c.inkMuted} />
+                <Text style={[s.methodsText, { color: c.inkMuted }]}>Pay with {ACCEPTED_METHODS.label}</Text>
+              </View>
+            ) : null}
+            <Text style={[s.fine, { color: c.inkFaint }]}>
+              Secure checkout by Stripe.{" "}
+              {plan.id === "monthly" ? `No charge for ${TRIAL_DAYS} days — cancel anytime.` : "One payment, no subscription."}
+            </Text>
+            {!billingConfigured ? (
+              <Text style={[s.fine, { color: c.inkFaint, marginTop: 4 }]}>
+                (Set EXPO_PUBLIC_STRIPE_LIFETIME_URL / _MONTHLY_URL to enable purchases.)
+              </Text>
+            ) : null}
+          </>
+        )}
       </Reveal>
     </SubScreen>
   );
@@ -219,6 +252,12 @@ const makeStyles = (c: Palette) =>
     ctaText: { fontFamily: fonts.bodyBold, fontSize: 15.5 },
     methods: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, marginTop: 12 },
     methodsText: { fontFamily: fonts.bodyMedium, fontSize: 12.5 },
+    confirm: { borderWidth: 1, borderRadius: radius.xl, padding: 20, alignItems: "center" },
+    confirmIcon: { width: 44, height: 44, borderRadius: 22, borderWidth: 1, alignItems: "center", justifyContent: "center" },
+    confirmTitle: { fontFamily: fonts.displayBold, fontSize: 18, color: c.ink, letterSpacing: -0.3, textAlign: "center", marginTop: 14 },
+    confirmSub: { fontFamily: fonts.body, fontSize: 13, color: c.inkMuted, lineHeight: 19, textAlign: "center", marginTop: 8, marginBottom: 16, maxWidth: 320 },
+    confirmAlt: { alignSelf: "center", marginTop: 12, padding: 6 },
+    confirmAltText: { fontFamily: fonts.bodySemibold, fontSize: 13 },
     fine: { fontFamily: fonts.body, fontSize: 11.5, textAlign: "center", marginTop: 10, lineHeight: 16 },
     proBox: { borderWidth: 1, borderRadius: radius.xl, padding: 22, alignItems: "center" },
     proIcon: { width: 48, height: 48, borderRadius: 24, alignItems: "center", justifyContent: "center" },

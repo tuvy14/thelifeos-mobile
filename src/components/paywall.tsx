@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
@@ -22,9 +22,11 @@ import {
 /** Full-screen, non-dismissible paywall shown after onboarding. Nothing in the
  *  app is free — the user must start the free trial or buy lifetime to continue.
  *
- *  Stripe Payment Links can't be verified on-device (no secret keys), so we grant
- *  access optimistically once the hosted checkout sheet is dismissed. Swap this for
- *  a Stripe-webhook → Supabase entitlement check when you want hard enforcement. */
+ *  Stripe Payment Links can't be verified on-device (no secret keys). Crucially,
+ *  simply *closing* the hosted checkout (the X) must NOT unlock the app, or anyone
+ *  could tap-X straight past the paywall. So returning from checkout shows an
+ *  explicit "I've completed payment" confirmation, and only that unlocks. Swap this
+ *  for a Stripe-webhook → Supabase entitlement check when you want hard enforcement. */
 export default function Paywall() {
   const { c } = useTheme();
   const s = makeStyles(c);
@@ -34,6 +36,9 @@ export default function Paywall() {
   const [selected, setSelected] = useState<PlanId>("monthly");
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
+  // After the Stripe sheet closes we land here — the user must confirm payment
+  // before anything unlocks (closing the sheet alone never grants access).
+  const [confirming, setConfirming] = useState(false);
 
   const plan = PLANS.find((p) => p.id === selected) ?? PLANS[0];
 
@@ -54,8 +59,9 @@ export default function Paywall() {
     const res = await openCheckout(plan);
     setBusy(false);
     if (res.ok) {
-      // Honor-system grant on return from the hosted Stripe checkout.
-      grant();
+      // The sheet closed. We can't tell *from here* whether they paid or just
+      // tapped X — so we do NOT grant. Ask them to confirm explicitly instead.
+      setConfirming(true);
     } else if (res.reason === "unconfigured") {
       setNote("Checkout isn't set up yet — add your Stripe Payment Link to enable purchases.");
     }
@@ -161,26 +167,54 @@ export default function Paywall() {
 
         {/* CTA */}
         <Reveal delay={380} style={{ marginTop: 22 }}>
-          <PressableScale style={[s.cta, { backgroundColor: c.ink }]} onPress={checkout} disabled={busy}>
-            {busy ? (
-              <ActivityIndicator color={c.obsidian} />
-            ) : (
-              <>
-                <Text style={[s.ctaText, { color: c.obsidian }]}>{ctaLabel}</Text>
-                <Ionicons name="arrow-forward" size={17} color={c.obsidian} />
-              </>
-            )}
-          </PressableScale>
-          {ACCEPTED_METHODS.applePay ? (
-            <View style={s.methods}>
-              <Ionicons name="logo-apple" size={15} color={c.inkMuted} />
-              <Text style={[s.methodsText, { color: c.inkMuted }]}>Pay with {ACCEPTED_METHODS.label}</Text>
+          {confirming ? (
+            /* Returned from Stripe — confirm before unlocking. Closing the sheet (X)
+               lands here too, so an accidental dismiss never gets into the app. */
+            <View style={[s.confirm, { borderColor: c.line, backgroundColor: c.card }]}>
+              <View style={[s.confirmIcon, { borderColor: c.line, backgroundColor: c.fill }]}>
+                <Ionicons name="lock-open-outline" size={18} color={c.ink} />
+              </View>
+              <Text style={[s.confirmTitle, { color: c.ink }]}>Did your payment go through?</Text>
+              <Text style={[s.confirmSub, { color: c.inkMuted }]}>
+                {plan.id === "monthly"
+                  ? `Tap confirm only once Stripe shows it succeeded — your ${TRIAL_DAYS}-day free trial starts now.`
+                  : "Tap confirm only once Stripe shows your payment succeeded."}
+              </Text>
+              <PressableScale style={[s.cta, { backgroundColor: c.ink, marginTop: 4 }]} onPress={grant}>
+                <Ionicons name="checkmark" size={17} color={c.obsidian} />
+                <Text style={[s.ctaText, { color: c.obsidian }]}>Yes — unlock TheLifeOS</Text>
+              </PressableScale>
+              <Pressable onPress={checkout} disabled={busy} style={s.confirmAlt}>
+                <Text style={[s.confirmAltText, { color: c.ink }]}>Reopen checkout</Text>
+              </Pressable>
+              <Pressable onPress={() => setConfirming(false)} style={s.confirmAlt}>
+                <Text style={[s.confirmAltText, { color: c.inkFaint }]}>I didn&apos;t complete payment</Text>
+              </Pressable>
             </View>
-          ) : null}
-          <Text style={[s.fine, { color: c.inkFaint }]}>
-            Secure checkout by Stripe.{" "}
-            {plan.id === "monthly" ? `No charge for ${TRIAL_DAYS} days — cancel anytime.` : "One payment, no subscription."}
-          </Text>
+          ) : (
+            <>
+              <PressableScale style={[s.cta, { backgroundColor: c.ink }]} onPress={checkout} disabled={busy}>
+                {busy ? (
+                  <ActivityIndicator color={c.obsidian} />
+                ) : (
+                  <>
+                    <Text style={[s.ctaText, { color: c.obsidian }]}>{ctaLabel}</Text>
+                    <Ionicons name="arrow-forward" size={17} color={c.obsidian} />
+                  </>
+                )}
+              </PressableScale>
+              {ACCEPTED_METHODS.applePay ? (
+                <View style={s.methods}>
+                  <Ionicons name="logo-apple" size={15} color={c.inkMuted} />
+                  <Text style={[s.methodsText, { color: c.inkMuted }]}>Pay with {ACCEPTED_METHODS.label}</Text>
+                </View>
+              ) : null}
+              <Text style={[s.fine, { color: c.inkFaint }]}>
+                Secure checkout by Stripe.{" "}
+                {plan.id === "monthly" ? `No charge for ${TRIAL_DAYS} days — cancel anytime.` : "One payment, no subscription."}
+              </Text>
+            </>
+          )}
           {note ? <Text style={[s.fine, { color: c.danger, marginTop: 4 }]}>{note}</Text> : null}
         </Reveal>
 
@@ -231,6 +265,12 @@ const makeStyles = (c: Palette) =>
     ctaText: { fontFamily: fonts.bodyBold, fontSize: 16 },
     methods: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, marginTop: 12 },
     methodsText: { fontFamily: fonts.bodyMedium, fontSize: 12.5 },
+    confirm: { borderWidth: 1, borderRadius: radius.xl, padding: 20, alignItems: "center" },
+    confirmIcon: { width: 44, height: 44, borderRadius: 22, borderWidth: 1, alignItems: "center", justifyContent: "center" },
+    confirmTitle: { fontFamily: fonts.displayBold, fontSize: 18, letterSpacing: -0.3, textAlign: "center", marginTop: 14 },
+    confirmSub: { fontFamily: fonts.body, fontSize: 13, lineHeight: 19, textAlign: "center", marginTop: 8, marginBottom: 16, maxWidth: 320 },
+    confirmAlt: { alignSelf: "center", marginTop: 12, padding: 6 },
+    confirmAltText: { fontFamily: fonts.bodySemibold, fontSize: 13 },
     fine: { fontFamily: fonts.body, fontSize: 11.5, textAlign: "center", marginTop: 10, lineHeight: 16 },
     devSkip: { alignSelf: "center", marginTop: 18, padding: 8 },
     devSkipText: { fontFamily: fonts.mono, fontSize: 11 },
