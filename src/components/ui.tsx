@@ -1,11 +1,12 @@
 import { View, Text, TextInput, StyleSheet, type ViewStyle, type TextStyle, type StyleProp } from "react-native";
+import { BlurView } from "expo-blur";
 import { Ionicons } from "@expo/vector-icons";
 import type { ReactNode } from "react";
 
 import { useTheme, radius, fonts, type Palette } from "@/lib/theme";
 import { PressableScale } from "@/components/anim";
 
-/* ── Glass surface card (web .surface-card) — pressable when onPress is set ── */
+/* ── Frosted-glass surface card (web .surface-card: blur + faint fill + line) ── */
 export function Card({
   children,
   style,
@@ -19,19 +20,27 @@ export function Card({
   rounded?: number;
   onPress?: () => void;
 }) {
-  const { c } = useTheme();
-  const cardStyle: StyleProp<ViewStyle> = [
-    { backgroundColor: c.card, borderColor: c.line, borderWidth: 1, borderRadius: rounded, padding },
-    style,
-  ];
+  const { c, isDark } = useTheme();
+  const content = (
+    <BlurView
+      intensity={isDark ? 22 : 40}
+      tint={isDark ? "dark" : "light"}
+      style={[
+        { borderColor: c.line, borderWidth: 1, borderRadius: rounded, padding, overflow: "hidden", backgroundColor: c.card },
+        style,
+      ]}
+    >
+      {children}
+    </BlurView>
+  );
   if (onPress) {
     return (
-      <PressableScale style={cardStyle} onPress={onPress}>
-        {children}
+      <PressableScale style={{ borderRadius: rounded }} onPress={onPress}>
+        {content}
       </PressableScale>
     );
   }
-  return <View style={cardStyle}>{children}</View>;
+  return content;
 }
 
 /* ── Eyebrow (mono, uppercase, leading dash) ── */

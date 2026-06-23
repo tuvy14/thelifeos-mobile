@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { View, Text, Pressable, StyleSheet } from "react-native";
+import { BlurView } from "expo-blur";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 
 import { useTheme, fonts, radius } from "@/lib/theme";
+import { PressableScale } from "@/components/anim";
 import CommandPalette from "@/components/command-palette";
 import Logo from "@/components/logo";
 
@@ -14,7 +16,11 @@ export default function TopBar() {
   const [paletteOpen, setPaletteOpen] = useState(false);
 
   return (
-    <View style={[styles.bar, { paddingTop: insets.top + 8, backgroundColor: c.obsidian, borderBottomColor: c.line }]}>
+    <BlurView
+      intensity={isDark ? 30 : 50}
+      tint={isDark ? "dark" : "light"}
+      style={[styles.bar, { paddingTop: insets.top + 8, borderBottomColor: c.line }]}
+    >
       <View style={styles.brand}>
         <Logo height={22} glow={false} />
         <Text style={[styles.wordmark, { color: c.ink }]}>
@@ -22,23 +28,25 @@ export default function TopBar() {
         </Text>
       </View>
       <View style={styles.actions}>
-        <Pressable
+        <PressableScale
           onPress={() => setPaletteOpen(true)}
           style={[styles.iconBtn, { borderColor: c.line }]}
           hitSlop={6}
+          scaleTo={0.9}
         >
           <Ionicons name="search" size={16} color={c.inkMuted} />
-        </Pressable>
-        <Pressable
+        </PressableScale>
+        <PressableScale
           onPress={toggle}
           style={[styles.iconBtn, { borderColor: c.line }]}
           hitSlop={6}
+          scaleTo={0.9}
         >
           <Ionicons name={isDark ? "sunny-outline" : "moon-outline"} size={16} color={c.inkMuted} />
-        </Pressable>
+        </PressableScale>
       </View>
       <CommandPalette visible={paletteOpen} onClose={() => setPaletteOpen(false)} />
-    </View>
+    </BlurView>
   );
 }
 
