@@ -33,7 +33,7 @@ export function Screen({
 
   return (
     <ScrollView
-      style={{ flex: 1, backgroundColor: c.obsidian }}
+      style={{ flex: 1, backgroundColor: "transparent" }}
       contentContainerStyle={{ paddingTop: 16, paddingHorizontal: 20, paddingBottom: 48 }}
       keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={false}

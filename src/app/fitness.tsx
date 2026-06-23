@@ -6,9 +6,9 @@ import { SubScreen } from "@/components/sub-screen";
 import { Card, EmptyState } from "@/components/ui";
 import { PressableScale } from "@/components/anim";
 import { useTheme, radius, fonts, type Palette } from "@/lib/theme";
-import { useStore, workoutStreak, today } from "@/lib/store";
+import { useStore, workoutStreak, lastNDays, today } from "@/lib/store";
 
-const TYPES = ["Run", "Lift", "Yoga", "Walk", "Cycle", "Swim", "HIIT", "Other"];
+const TYPES = ["Gym", "Run", "Cycle", "Lift", "Yoga", "Sport", "Walk", "Other"];
 
 export default function FitnessScreen() {
   const { workouts, addWorkout, deleteWorkout } = useStore();
@@ -21,6 +21,8 @@ export default function FitnessScreen() {
   const streak = workoutStreak(workouts);
   const weekAgo = Date.now() - 7 * 864e5;
   const weekCount = workouts.filter((w) => w.ts >= weekAgo).length;
+  const days = lastNDays(7);
+  const workoutDates = new Set(workouts.map((w) => w.date));
 
   const add = () => {
     addWorkout(type, parseFloat(duration) || 0, note);
@@ -28,14 +30,14 @@ export default function FitnessScreen() {
   };
 
   const stats = [
-    { label: "Streak", value: `${streak}d` },
+    { label: "Sessions", value: String(workouts.length) },
     { label: "This week", value: String(weekCount) },
-    { label: "All time", value: String(workouts.length) },
+    { label: "Streak", value: String(streak) },
   ];
 
   return (
-    <SubScreen eyebrow="Movement" title="Fitness">
-      <Text style={s.sub}>Log every session — consistency beats intensity.</Text>
+    <SubScreen eyebrow="Body" title="Fitness">
+      <Text style={s.sub}>Log every session. Showing up is the win.</Text>
 
       <View style={s.statRow}>
         {stats.map((st) => (
@@ -45,6 +47,21 @@ export default function FitnessScreen() {
           </Card>
         ))}
       </View>
+
+      {/* Week dots */}
+      <Card style={{ marginTop: 14, flexDirection: "row", justifyContent: "space-between" }} padding={16}>
+        {days.map((d) => {
+          const done = workoutDates.has(d);
+          return (
+            <View key={d} style={{ alignItems: "center", gap: 8 }}>
+              <View style={[s.dot, { borderColor: done ? c.ink : c.line, backgroundColor: done ? c.ink : c.fill }]}>
+                {done && <Ionicons name="barbell" size={14} color={c.obsidian} />}
+              </View>
+              <Text style={s.dotLabel}>{new Date(d + "T00:00:00").toLocaleDateString(undefined, { weekday: "short" }).slice(0, 1)}</Text>
+            </View>
+          );
+        })}
+      </Card>
 
       <Card style={{ marginTop: 14 }}>
         <Text style={s.label}>LOG A WORKOUT</Text>
@@ -102,6 +119,8 @@ const makeStyles = (c: Palette) =>
     statRow: { flexDirection: "row", gap: 10, marginTop: 16 },
     statValue: { fontFamily: fonts.displayBold, fontSize: 22, color: c.ink },
     statLabel: { fontFamily: fonts.body, fontSize: 11, color: c.inkFaint, marginTop: 2 },
+    dot: { width: 36, height: 36, borderRadius: 18, borderWidth: 1, alignItems: "center", justifyContent: "center" },
+    dotLabel: { fontFamily: fonts.mono, fontSize: 10, color: c.inkFaint },
     label: { fontFamily: fonts.bodyBold, fontSize: 11, letterSpacing: 1.2, color: c.inkFaint },
     typeChip: { borderWidth: 1, borderRadius: radius.pill, paddingHorizontal: 14, paddingVertical: 8 },
     typeChipText: { fontFamily: fonts.bodyMedium, fontSize: 13 },

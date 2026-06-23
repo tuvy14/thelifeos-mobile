@@ -39,7 +39,7 @@ export function SubScreen({
 
   return (
     <ScrollView
-      style={{ flex: 1, backgroundColor: c.obsidian }}
+      style={{ flex: 1, backgroundColor: "transparent" }}
       contentContainerStyle={{ paddingTop: insets.top + 8, paddingHorizontal: 20, paddingBottom: 56 }}
       keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={false}

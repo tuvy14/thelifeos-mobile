@@ -24,6 +24,7 @@ import { ThemeProvider, useTheme } from "@/lib/theme";
 import { CelebrationProvider } from "@/lib/celebrate";
 import Onboarding from "@/components/onboarding";
 import OttoChat from "@/components/otto-chat";
+import Backdrop from "@/components/backdrop";
 
 function Shell() {
   const { c, isDark } = useTheme();
@@ -40,11 +41,13 @@ function Shell() {
   return (
     <View style={{ flex: 1, backgroundColor: c.obsidian }}>
       <StatusBar style={isDark ? "light" : "dark"} />
+      {/* Ambient dot-field + glow behind the (transparent) screens. */}
+      <Backdrop />
       {/* Navigator stays mounted so routing context always exists. */}
       <Stack
         screenOptions={{
           headerShown: false,
-          contentStyle: { backgroundColor: c.obsidian },
+          contentStyle: { backgroundColor: "transparent" },
         }}
       />
       {/* Otto coach FAB — hidden during onboarding. */}
