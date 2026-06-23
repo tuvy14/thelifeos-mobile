@@ -6,7 +6,7 @@ import { SubScreen } from "@/components/sub-screen";
 import { Card } from "@/components/ui";
 import { PressableScale } from "@/components/anim";
 import { useTheme, radius, fonts, type Palette } from "@/lib/theme";
-import { useStore } from "@/lib/store";
+import { useStore, isPaid, trialDaysLeft } from "@/lib/store";
 import { useSync } from "@/lib/sync";
 
 export default function SettingsScreen() {
@@ -20,6 +20,21 @@ export default function SettingsScreen() {
     : email
       ? status === "syncing" ? "Syncing…" : `Signed in · ${email}`
       : "Sign in to sync your devices";
+
+  // Plan row state (mirrors the entitlement model).
+  const paid = isPaid(profile); // admin / lifetime / monthly
+  const onTrial = profile?.plan === "trial";
+  const trialLeft = trialDaysLeft(profile);
+  const planActive = paid || onTrial;
+  const planTitle = paid ? "TheLifeOS Pro" : onTrial ? "Pro trial" : "Upgrade to Pro";
+  const planSub =
+    profile?.admin || profile?.plan === "lifetime"
+      ? "Lifetime access · active"
+      : profile?.plan === "monthly"
+        ? "Pro monthly · active"
+        : onTrial
+          ? `${trialLeft} day${trialLeft === 1 ? "" : "s"} left · tap to manage`
+          : "Lifetime $300 · or $15/mo";
 
   const counts = [
     { label: "Check-ins", value: logs.length },
@@ -61,13 +76,13 @@ export default function SettingsScreen() {
       </PressableScale>
 
       <Text style={s.section}>PLAN</Text>
-      <PressableScale style={[s.row, !profile?.admin && { borderColor: c.ink }]} onPress={() => router.navigate("/upgrade")}>
-        <View style={[s.icon, { borderColor: profile?.admin ? c.line : c.ink, backgroundColor: profile?.admin ? c.fill : c.ink }]}>
-          <Ionicons name="sparkles" size={18} color={profile?.admin ? c.ink : c.obsidian} />
+      <PressableScale style={[s.row, !planActive && { borderColor: c.ink }]} onPress={() => router.navigate("/upgrade")}>
+        <View style={[s.icon, { borderColor: planActive ? c.line : c.ink, backgroundColor: planActive ? c.fill : c.ink }]}>
+          <Ionicons name="sparkles" size={18} color={planActive ? c.ink : c.obsidian} />
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={s.rowTitle}>{profile?.admin ? "TheLifeOS Pro" : "Upgrade to Pro"}</Text>
-          <Text style={s.rowSub}>{profile?.admin ? "Lifetime access · active" : "Lifetime $300 · or $20/mo"}</Text>
+          <Text style={s.rowTitle}>{planTitle}</Text>
+          <Text style={s.rowSub}>{planSub}</Text>
         </View>
         <Ionicons name="chevron-forward" size={18} color={c.inkFaint} />
       </PressableScale>
@@ -103,11 +118,8 @@ export default function SettingsScreen() {
 
       <Text style={s.section}>ABOUT</Text>
       <Card padding={4}>
-        <View style={[s.dataRow, { borderBottomWidth: 1, borderBottomColor: c.line }]}>
-          <Text style={s.dataLabel}>Version</Text><Text style={s.dataValue}>1.0.0</Text>
-        </View>
         <View style={s.dataRow}>
-          <Text style={s.dataLabel}>Made for</Text><Text style={s.dataValue}>small wins</Text>
+          <Text style={s.dataLabel}>Version</Text><Text style={s.dataValue}>1.0.0</Text>
         </View>
       </Card>
 

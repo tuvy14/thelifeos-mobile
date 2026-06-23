@@ -70,6 +70,9 @@ export interface Referral {
 export interface Profile {
   name?: string; focuses: string[]; challenge?: string; dailyTime?: string;
   level?: string; rhythm?: string; onboardedAt: number; admin?: boolean;
+  /** Billing entitlement. Set after the user starts a trial / buys (Stripe). */
+  plan?: "trial" | "monthly" | "lifetime";
+  trialStartedAt?: number;
 }
 
 /* ── Constants (mirror web) ── */
@@ -271,6 +274,9 @@ interface Store {
   setActiveMode: (id: string) => void;
   completeOnboarding: (name: string, focusIds: string[], extras?: Partial<Pick<Profile, "challenge" | "dailyTime" | "level" | "rhythm" | "admin">>) => void;
   resetOnboarding: () => void;
+  // billing entitlement
+  startTrial: () => void;
+  setPlan: (plan: "monthly" | "lifetime") => void;
   // sync bridge + utility
   exportRaw: () => Record<string, string>;
   importRaw: (data: Record<string, string>) => void;
@@ -539,6 +545,24 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   );
   const resetOnboarding = useCallback(() => { setProfile(null); persist(K.profile, null); }, []);
 
+  /* ── billing entitlement ── */
+  const startTrial = useCallback(() => {
+    setProfile((cur) => {
+      if (!cur) return cur;
+      const p: Profile = { ...cur, plan: "trial", trialStartedAt: Date.now() };
+      persist(K.profile, p);
+      return p;
+    });
+  }, []);
+  const setPlan = useCallback((plan: "monthly" | "lifetime") => {
+    setProfile((cur) => {
+      if (!cur) return cur;
+      const p: Profile = { ...cur, plan };
+      persist(K.profile, p);
+      return p;
+    });
+  }, []);
+
   /* ── sync bridge ── */
   const exportRaw = useCallback((): Record<string, string> => {
     const snap: Record<string, unknown> = {
@@ -599,6 +623,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       addCalendarEvent, toggleCalendarEvent, removeCalendarEvent,
       ensureRefCode, addReferral,
       setActiveMode, completeOnboarding, resetOnboarding,
+      startTrial, setPlan,
       exportRaw, importRaw, resetAll,
     }),
     [
@@ -607,7 +632,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       saveCheckin, addWin, deleteWin, addRevenue, deleteRevenue, addExpense, deleteExpense, setMoneyGoal,
       addHabit, deleteHabit, toggleHabit, addGoal, setGoalProgress, deleteGoal, addJournal, deleteJournal,
       addWorkout, deleteWorkout, addFocusMinutes, addCalendarEvent, toggleCalendarEvent, removeCalendarEvent,
-      ensureRefCode, addReferral, setActiveMode, completeOnboarding, resetOnboarding, exportRaw, importRaw, resetAll,
+      ensureRefCode, addReferral, setActiveMode, completeOnboarding, resetOnboarding,
+      startTrial, setPlan, exportRaw, importRaw, resetAll,
     ]
   );
 
@@ -691,6 +717,29 @@ export function revenueByCategory(revenue: RevenueEntry[], ym = today().slice(0,
 }
 export const getFocuses = (profile: Profile | null): string[] => profile?.focuses ?? [];
 export const isOnboarded = (profile: Profile | null) => !!profile?.onboardedAt;
+
+/* ── Billing entitlement (local, honor-system after Stripe Payment Link) ──
+   Real enforcement needs a Stripe webhook → Supabase (server-side, secret key);
+   on-device we can only track what plan the user picked. */
+export const TRIAL_DAYS = 3;
+const DAY_MS = 86_400_000;
+/** Paid forever (or admin) — full access, no trial clock. */
+export const isPaid = (profile: Profile | null): boolean =>
+  !!profile && (!!profile.admin || profile.plan === "lifetime" || profile.plan === "monthly");
+/** Days left in the free trial (0 once expired or not on trial). */
+export function trialDaysLeft(profile: Profile | null): number {
+  if (!profile || profile.plan !== "trial" || !profile.trialStartedAt) return 0;
+  const end = profile.trialStartedAt + TRIAL_DAYS * DAY_MS;
+  return Math.max(0, Math.ceil((end - Date.now()) / DAY_MS));
+}
+/** Whether the user may use the app right now: paid, admin, or trial still live. */
+export function entitled(profile: Profile | null): boolean {
+  if (!profile) return false;
+  if (isPaid(profile)) return true;
+  if (profile.plan === "trial" && profile.trialStartedAt)
+    return Date.now() < profile.trialStartedAt + TRIAL_DAYS * DAY_MS;
+  return false;
+}
 
 export interface Achievement {
   id: string; label: string; description: string; icon: string; goal: number; current: number; unlocked: boolean;

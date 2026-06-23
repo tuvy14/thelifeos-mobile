@@ -291,19 +291,20 @@ export default function OttoChat() {
                 {typing && <TypingDots c={c} />}
               </ScrollView>
 
-              {/* Quick reply chips */}
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                style={s.chips}
-                contentContainerStyle={{ gap: 8, paddingHorizontal: 16, paddingVertical: 10 }}
-              >
-                {SUGGESTIONS.map((sug) => (
-                  <PressableScale key={sug} onPress={() => ask(sug)} style={[s.chip, { borderColor: c.line, backgroundColor: c.fill }]}>
-                    <Text style={[s.chipText, { color: c.inkMuted }]}>{sug}</Text>
-                  </PressableScale>
-                ))}
-              </ScrollView>
+              {/* Quick reply chips — fixed-height strip so chips stay pill-sized */}
+              <View style={s.chipsWrap}>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={{ gap: 8, paddingHorizontal: 16, alignItems: "center" }}
+                >
+                  {SUGGESTIONS.map((sug) => (
+                    <PressableScale key={sug} onPress={() => ask(sug)} style={[s.chip, { borderColor: c.line, backgroundColor: c.fill }]}>
+                      <Text style={[s.chipText, { color: c.inkMuted }]} numberOfLines={1}>{sug}</Text>
+                    </PressableScale>
+                  ))}
+                </ScrollView>
+              </View>
 
               {/* Input row */}
               {listening ? (
@@ -376,8 +377,8 @@ const makeStyles = (c: Palette) =>
     statusDot: { width: 7, height: 7, borderRadius: 3.5, backgroundColor: "#3fcf6e" },
     headerSub: { fontFamily: fonts.body, fontSize: 12 },
     headerBtn: { width: 36, height: 36, borderRadius: radius.sm, borderWidth: 1, alignItems: "center", justifyContent: "center" },
-    chips: { flexShrink: 0 },
-    chip: { borderWidth: 1, borderRadius: radius.pill, paddingHorizontal: 14, paddingVertical: 8 },
+    chipsWrap: { height: 58, flexShrink: 0, flexGrow: 0, justifyContent: "center" },
+    chip: { height: 36, borderWidth: 1, borderRadius: radius.pill, paddingHorizontal: 14, alignItems: "center", justifyContent: "center" },
     chipText: { fontFamily: fonts.bodyMedium, fontSize: 13 },
     inputRow: { flexDirection: "row", alignItems: "flex-end", gap: 10, paddingHorizontal: 14, paddingTop: 12, paddingBottom: 10, borderTopWidth: StyleSheet.hairlineWidth },
     micBtn: { width: 46, height: 46, borderRadius: 23, borderWidth: 1, alignItems: "center", justifyContent: "center" },

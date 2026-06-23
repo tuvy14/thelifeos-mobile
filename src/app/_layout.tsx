@@ -18,12 +18,14 @@ import {
   JetBrainsMono_600SemiBold,
 } from "@expo-google-fonts/jetbrains-mono";
 
-import { StoreProvider, useStore, isOnboarded } from "@/lib/store";
+import { StoreProvider, useStore, isOnboarded, entitled } from "@/lib/store";
 import { SyncProvider } from "@/lib/sync";
 import { ThemeProvider, useTheme } from "@/lib/theme";
 import { CelebrationProvider } from "@/lib/celebrate";
 import Onboarding from "@/components/onboarding";
 import OttoChat from "@/components/otto-chat";
+import Paywall from "@/components/paywall";
+import WelcomeCurtain from "@/components/welcome-curtain";
 import Splash from "@/components/splash";
 import { EASE } from "@/components/anim";
 
@@ -32,10 +34,22 @@ function Shell() {
   const { ready, profile } = useStore();
   const [onboarding, setOnboarding] = useState<boolean | null>(null);
   const [splashGone, setSplashGone] = useState(false);
+  const [showWelcome, setShowWelcome] = useState(false);
   const splashOpacity = useRef(new Animated.Value(1)).current;
+  const prevEntitled = useRef<boolean | null>(null);
 
   useEffect(() => {
     if (ready && !isOnboarded(profile)) setOnboarding(true);
+  }, [ready, profile]);
+
+  // Play the welcome curtain the first time the user transitions into "entitled"
+  // (started a trial / bought) within this session — not on every cold launch.
+  useEffect(() => {
+    if (!ready) return;
+    const e = entitled(profile);
+    if (prevEntitled.current === null) { prevEntitled.current = e; return; }
+    if (e && !prevEntitled.current) setShowWelcome(true);
+    prevEntitled.current = e;
   }, [ready, profile]);
 
   // Fade the splash out once the store is hydrated, then unmount it.
@@ -47,6 +61,8 @@ function Shell() {
   }, [ready, splashOpacity]);
 
   const showOnboarding = onboarding === true;
+  // Nothing is free: once onboarded, you must start a trial or buy to enter.
+  const showPaywall = ready && !showOnboarding && isOnboarded(profile) && !entitled(profile);
 
   return (
     <View style={{ flex: 1, backgroundColor: c.obsidian }}>
@@ -59,10 +75,24 @@ function Shell() {
           contentStyle: { backgroundColor: c.obsidian },
         }}
       />
-      {ready && !showOnboarding && <OttoChat />}
+      {ready && !showOnboarding && !showPaywall && <OttoChat />}
       {showOnboarding && (
         <View style={StyleSheet.absoluteFill}>
           <Onboarding onDone={() => setOnboarding(false)} />
+        </View>
+      )}
+
+      {/* Paywall gate — after the quiz, before the app */}
+      {showPaywall && (
+        <View style={StyleSheet.absoluteFill}>
+          <Paywall />
+        </View>
+      )}
+
+      {/* Welcome entrance — overlays the app, then fades to reveal it */}
+      {showWelcome && (
+        <View style={StyleSheet.absoluteFill}>
+          <WelcomeCurtain name={profile?.name} onDone={() => setShowWelcome(false)} />
         </View>
       )}
 

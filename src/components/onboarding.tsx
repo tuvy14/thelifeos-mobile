@@ -156,7 +156,10 @@ export default function Onboarding({ onDone }: { onDone: () => void }) {
       const meta = (u.user?.user_metadata ?? {}) as { full_name?: string; name?: string };
       const nm = (meta.full_name || meta.name || "").trim().split(" ")[0] || undefined;
       setBusy(null);
-      enterApp(nm);
+      // Signed in — now continue INTO the quiz (the paywall comes after it),
+      // rather than dropping straight into the app.
+      if (nm) setName(nm);
+      setI(STEPS.indexOf("goals"));
     } catch (e) {
       setBusy(null);
       setNote(e instanceof Error ? e.message : "Sign-in failed. Try again.");

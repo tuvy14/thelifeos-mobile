@@ -85,7 +85,7 @@ export default function MoreScreen() {
             <View style={[s.tileIcon, { borderColor: c.ink, backgroundColor: c.ink }]}><Ionicons name="sparkles" size={17} color={c.obsidian} /></View>
             <View style={{ flex: 1 }}>
               <Text style={s.wideTitle}>Upgrade to Pro</Text>
-              <Text style={s.wideSub}>Lifetime $300 · or $20/mo</Text>
+              <Text style={s.wideSub}>Lifetime $300 · or $15/mo</Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={c.inkFaint} />
           </PressableScale>

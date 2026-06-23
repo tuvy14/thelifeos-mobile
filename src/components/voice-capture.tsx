@@ -45,7 +45,16 @@ export default function VoiceCapture({
           finish();
           return;
         }
-        ExpoSpeechRecognitionModule.start({ lang: "en-US", interimResults: true, continuous: false });
+        // continuous + interim so it keeps listening until the user taps stop
+        // (non-continuous cut off mid-sentence and dropped words). Punctuation
+        // and server recognition give noticeably better transcripts.
+        ExpoSpeechRecognitionModule.start({
+          lang: "en-US",
+          interimResults: true,
+          continuous: true,
+          addsPunctuation: true,
+          requiresOnDeviceRecognition: false,
+        });
       } catch {
         finish();
       }

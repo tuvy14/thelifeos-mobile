@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { View, Text, TextInput, Pressable, StyleSheet } from "react-native";
+import { View, Text, TextInput, StyleSheet } from "react-native";
 import Slider from "@react-native-community/slider";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -10,7 +10,6 @@ import { PressableScale } from "@/components/anim";
 import { useTheme, radius, fonts, type Palette } from "@/lib/theme";
 import {
   useStore,
-  scoreFor,
   todayLog,
   FOCUS_RITUALS,
   activeMode,
@@ -18,6 +17,89 @@ import {
 import { useCelebrate } from "@/lib/celebrate";
 
 const numState = (v?: number) => (v ? String(v) : "");
+
+/* ── Field components live at MODULE scope (not inside the screen).
+   Defining them inline re-creates the component type on every keystroke,
+   which remounts the Slider mid-gesture and made values "lock". ── */
+
+function Num({ icon, label, unit, value, onChange }: {
+  icon: keyof typeof Ionicons.glyphMap; label: string; unit: string; value: string; onChange: (v: string) => void;
+}) {
+  const { c } = useTheme();
+  const s = makeStyles(c);
+  return (
+    <View style={s.numCard}>
+      <View style={s.numHead}>
+        <Ionicons name={icon} size={14} color={c.inkMuted} />
+        <Text style={s.numLabel}>{label.toUpperCase()}</Text>
+      </View>
+      <View style={s.numRow}>
+        <TextInput
+          value={value}
+          onChangeText={onChange}
+          placeholder="0"
+          placeholderTextColor={c.inkFaint}
+          keyboardType="numeric"
+          style={s.numInput}
+        />
+        <Text style={s.numUnit}>{unit}</Text>
+      </View>
+    </View>
+  );
+}
+
+function Scale({ label, value, onChange, low, high }: {
+  label: string; value: number; onChange: (n: number) => void; low?: string; high?: string;
+}) {
+  const { c } = useTheme();
+  const s = makeStyles(c);
+  return (
+    <View style={s.scale}>
+      <View style={s.scaleHead}>
+        <Text style={s.numLabel}>{label.toUpperCase()}</Text>
+        <Text style={s.scaleVal}>
+          {value ? value : "—"}<Text style={s.scaleMax}> /10</Text>
+        </Text>
+      </View>
+      <Slider
+        minimumValue={1}
+        maximumValue={10}
+        step={1}
+        value={value || 1}
+        onValueChange={onChange}
+        tapToSeek
+        minimumTrackTintColor={c.ink}
+        maximumTrackTintColor={c.line}
+        thumbTintColor={c.ink}
+      />
+      {(low || high) && (
+        <View style={s.scaleEnds}>
+          <Text style={s.scaleEnd}>{low}</Text>
+          <Text style={s.scaleEnd}>{high}</Text>
+        </View>
+      )}
+    </View>
+  );
+}
+
+function TextRow({ icon, label, placeholder, value, onChange }: {
+  icon: keyof typeof Ionicons.glyphMap; label: string; placeholder: string; value: string; onChange: (v: string) => void;
+}) {
+  const { c } = useTheme();
+  const s = makeStyles(c);
+  return (
+    <View>
+      <View style={s.numHead}>
+        <Ionicons name={icon} size={14} color={c.inkMuted} />
+        <Text style={s.numLabel}>{label.toUpperCase()}</Text>
+      </View>
+      <TextInput
+        value={value} onChangeText={onChange} placeholder={placeholder} placeholderTextColor={c.inkFaint}
+        style={s.textField} multiline
+      />
+    </View>
+  );
+}
 
 export default function CheckinScreen() {
   const { logs, mode, profile, saveCheckin } = useStore();
@@ -57,99 +139,29 @@ export default function CheckinScreen() {
 
   const ritualsForMode = FOCUS_RITUALS[activeMode(mode, profile)] ?? FOCUS_RITUALS.habits;
 
-  const draft = {
-    sleep: +sleep || 0, water: +water || 0, deepWork: +deepWork || 0, mood, energy, rituals,
-    steps: +steps || 0, screenTime: +screenTime || 0, nutrition, intention: intention.trim(),
-    gratitude: gratitude.trim(), weight: +weight || 0, restingHR: +restingHR || 0, sleepQuality,
-    caffeine: +caffeine || 0, alcohol: +alcohol || 0, tasksDone: +tasksDone || 0,
-    outdoors: +outdoors || 0, meditation: +meditation || 0, stress, social, productivity,
-    highlight: highlight.trim(), improve: improve.trim(),
-  };
-  const liveScore = scoreFor({ date: "", ...draft });
-
   const toggleRitual = (id: string) =>
     setRituals((r) => (r.includes(id) ? r.filter((x) => x !== id) : [...r, id]));
 
   const save = () => {
-    saveCheckin(draft);
+    saveCheckin({
+      sleep: +sleep || 0, water: +water || 0, deepWork: +deepWork || 0, mood, energy, rituals,
+      steps: +steps || 0, screenTime: +screenTime || 0, nutrition, intention: intention.trim(),
+      gratitude: gratitude.trim(), weight: +weight || 0, restingHR: +restingHR || 0, sleepQuality,
+      caffeine: +caffeine || 0, alcohol: +alcohol || 0, tasksDone: +tasksDone || 0,
+      outdoors: +outdoors || 0, meditation: +meditation || 0, stress, social, productivity,
+      highlight: highlight.trim(), improve: improve.trim(),
+    });
     setSaved(true);
     celebrate("Checked in — today's win is logged 🔥");
     setTimeout(() => router.navigate("/"), 850);
   };
 
-  const Num = ({ icon, label, unit, value, onChange }: {
-    icon: keyof typeof Ionicons.glyphMap; label: string; unit: string; value: string; onChange: (v: string) => void;
-  }) => (
-    <View style={s.numCard}>
-      <View style={s.numHead}>
-        <Ionicons name={icon} size={14} color={c.inkMuted} />
-        <Text style={s.numLabel}>{label.toUpperCase()}</Text>
-      </View>
-      <View style={s.numRow}>
-        <TextInput
-          value={value}
-          onChangeText={onChange}
-          placeholder="0"
-          placeholderTextColor={c.inkFaint}
-          keyboardType="numeric"
-          style={s.numInput}
-        />
-        <Text style={s.numUnit}>{unit}</Text>
-      </View>
-    </View>
-  );
-
-  const Scale = ({ label, value, onChange, low, high }: {
-    label: string; value: number; onChange: (n: number) => void; low?: string; high?: string;
-  }) => (
-    <View style={s.scale}>
-      <View style={s.scaleHead}>
-        <Text style={s.numLabel}>{label.toUpperCase()}</Text>
-        <Text style={s.scaleVal}>
-          {value ? value : "—"}<Text style={s.scaleMax}> /10</Text>
-        </Text>
-      </View>
-      <Slider
-        minimumValue={1} maximumValue={10} step={1} value={value || 1}
-        onValueChange={onChange}
-        minimumTrackTintColor={c.ink} maximumTrackTintColor={c.line} thumbTintColor={c.ink}
-      />
-      {(low || high) && (
-        <View style={s.scaleEnds}>
-          <Text style={s.scaleEnd}>{low}</Text>
-          <Text style={s.scaleEnd}>{high}</Text>
-        </View>
-      )}
-    </View>
-  );
-
-  const TextRow = ({ icon, label, placeholder, value, onChange }: {
-    icon: keyof typeof Ionicons.glyphMap; label: string; placeholder: string; value: string; onChange: (v: string) => void;
-  }) => (
-    <View>
-      <View style={s.numHead}>
-        <Ionicons name={icon} size={14} color={c.inkMuted} />
-        <Text style={s.numLabel}>{label.toUpperCase()}</Text>
-      </View>
-      <TextInput
-        value={value} onChangeText={onChange} placeholder={placeholder} placeholderTextColor={c.inkFaint}
-        style={s.textField} multiline
-      />
-    </View>
-  );
-
   return (
     <Screen>
       <View style={s.header}>
-        <View style={{ flex: 1 }}>
-          <Eyebrow>Daily ritual</Eyebrow>
-          <Text style={s.title}>Daily check-in</Text>
-          <Text style={s.sub}>The full picture. Log what you can — everything compounds.</Text>
-        </View>
-        <View style={{ alignItems: "flex-end" }}>
-          <Text style={s.live}>{liveScore}</Text>
-          <Text style={s.liveLabel}>live score</Text>
-        </View>
+        <Eyebrow>Daily ritual</Eyebrow>
+        <Text style={s.title}>Daily check-in</Text>
+        <Text style={s.sub}>The full picture. Log what you can — everything compounds.</Text>
       </View>
 
       <Text style={s.section}>BODY</Text>
@@ -229,11 +241,9 @@ export default function CheckinScreen() {
 
 const makeStyles = (c: Palette) =>
   StyleSheet.create({
-    header: { flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between", gap: 12 },
+    header: { marginBottom: 4 },
     title: { fontFamily: fonts.displayBold, fontSize: 28, color: c.ink, letterSpacing: -0.5, marginTop: 8 },
     sub: { fontFamily: fonts.body, fontSize: 13, color: c.inkMuted, marginTop: 3, lineHeight: 18 },
-    live: { fontFamily: fonts.displayBold, fontSize: 24, color: c.ink },
-    liveLabel: { fontFamily: fonts.body, fontSize: 11, color: c.inkFaint },
     section: { fontFamily: fonts.monoMedium, fontSize: 11, letterSpacing: 1.6, color: c.inkFaint, marginTop: 24, marginBottom: 12 },
     grid: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
     numCard: { flexGrow: 1, flexBasis: "46%", backgroundColor: c.card, borderWidth: 1, borderColor: c.line, borderRadius: radius.lg, padding: 14 },
