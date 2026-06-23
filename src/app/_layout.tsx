@@ -24,7 +24,7 @@ import { ThemeProvider, useTheme } from "@/lib/theme";
 import { CelebrationProvider } from "@/lib/celebrate";
 import Onboarding from "@/components/onboarding";
 import OttoChat from "@/components/otto-chat";
-import Backdrop from "@/components/backdrop";
+import ShaderBackdrop from "@/components/shader-backdrop";
 
 function Shell() {
   const { c, isDark } = useTheme();
@@ -41,8 +41,8 @@ function Shell() {
   return (
     <View style={{ flex: 1, backgroundColor: c.obsidian }}>
       <StatusBar style={isDark ? "light" : "dark"} />
-      {/* Ambient dot-field + glow behind the (transparent) screens. */}
-      <Backdrop />
+      {/* Live WebGL dot-shader (dark) / soft gradient (light) behind screens. */}
+      <ShaderBackdrop />
       {/* Navigator stays mounted so routing context always exists. */}
       <Stack
         screenOptions={{
