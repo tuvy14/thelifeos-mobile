@@ -1,0 +1,53 @@
+import { useState } from "react";
+import { View, Text, Pressable, StyleSheet } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
+
+import { useTheme, fonts, radius } from "@/lib/theme";
+import CommandPalette from "@/components/command-palette";
+
+/** Shared top bar for the tab screens: wordmark + search (command palette) + theme toggle. */
+export default function TopBar() {
+  const { c, isDark, toggle } = useTheme();
+  const insets = useSafeAreaInsets();
+  const [paletteOpen, setPaletteOpen] = useState(false);
+
+  return (
+    <View style={[styles.bar, { paddingTop: insets.top + 8, backgroundColor: c.obsidian, borderBottomColor: c.line }]}>
+      <Text style={[styles.wordmark, { color: c.ink }]}>
+        TheLife<Text style={{ color: c.inkMuted }}>OS</Text>
+      </Text>
+      <View style={styles.actions}>
+        <Pressable
+          onPress={() => setPaletteOpen(true)}
+          style={[styles.iconBtn, { borderColor: c.line }]}
+          hitSlop={6}
+        >
+          <Ionicons name="search" size={16} color={c.inkMuted} />
+        </Pressable>
+        <Pressable
+          onPress={toggle}
+          style={[styles.iconBtn, { borderColor: c.line }]}
+          hitSlop={6}
+        >
+          <Ionicons name={isDark ? "sunny-outline" : "moon-outline"} size={16} color={c.inkMuted} />
+        </Pressable>
+      </View>
+      <CommandPalette visible={paletteOpen} onClose={() => setPaletteOpen(false)} />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  bar: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+  },
+  wordmark: { fontFamily: fonts.displayBold, fontSize: 17, letterSpacing: -0.3 },
+  actions: { flexDirection: "row", gap: 10 },
+  iconBtn: { width: 34, height: 34, borderRadius: radius.sm, borderWidth: 1, alignItems: "center", justifyContent: "center" },
+});

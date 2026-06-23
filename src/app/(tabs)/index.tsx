@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { View, Text, Pressable, StyleSheet, ActivityIndicator } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router, type Href } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
@@ -16,6 +17,7 @@ import {
   getFocuses,
   FOCUS_AREAS,
 } from "@/lib/store";
+import { useCelebrate } from "@/lib/celebrate";
 
 const VIEW_ROUTE: Record<string, Href> = {
   checkin: "/check-in",
@@ -32,8 +34,23 @@ const routeFor = (view: string): Href => VIEW_ROUTE[view] ?? "/check-in";
 
 export default function TodayScreen() {
   const { ready, logs, wins, profile, addWin } = useStore();
+  const { celebrate } = useCelebrate();
   const { c } = useTheme();
   const [winInput, setWinInput] = useState("");
+
+  // Celebrate streak milestones once each (mirrors web lifeos:celebrate).
+  useEffect(() => {
+    if (!ready) return;
+    const stk = streak(logs);
+    if (![3, 7, 14, 30, 50, 100, 200, 365].includes(stk)) return;
+    (async () => {
+      const prev = Number((await AsyncStorage.getItem("lifeos_celebratedStreak")) || 0);
+      if (stk > prev) {
+        await AsyncStorage.setItem("lifeos_celebratedStreak", String(stk));
+        celebrate(`🔥 ${stk}-day streak — you're on fire!`);
+      }
+    })();
+  }, [ready, logs, celebrate]);
 
   if (!ready) {
     return (

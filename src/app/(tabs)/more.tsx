@@ -30,8 +30,10 @@ const GROUPS: Group[] = [
   ] },
   { label: "Insights", items: [
     { href: "/insights", icon: "stats-chart-outline", label: "Insights" },
-    { href: "/achievements", icon: "trophy-outline", label: "Achievements" },
+    { href: "/leaderboard", icon: "trophy-outline", label: "Leaderboard" },
+    { href: "/achievements", icon: "ribbon-outline", label: "Achievements" },
     { href: "/memories", icon: "time-outline", label: "Memories" },
+    { href: "/tiktok", icon: "videocam-outline", label: "TikTok" },
   ] },
 ];
 

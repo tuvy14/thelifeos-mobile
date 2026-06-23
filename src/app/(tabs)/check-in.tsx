@@ -14,11 +14,13 @@ import {
   FOCUS_RITUALS,
   activeMode,
 } from "@/lib/store";
+import { useCelebrate } from "@/lib/celebrate";
 
 const numState = (v?: number) => (v ? String(v) : "");
 
 export default function CheckinScreen() {
   const { logs, mode, profile, saveCheckin } = useStore();
+  const { celebrate } = useCelebrate();
   const { c } = useTheme();
   const s = makeStyles(c);
   const existing = todayLog(logs);
@@ -70,6 +72,7 @@ export default function CheckinScreen() {
   const save = () => {
     saveCheckin(draft);
     setSaved(true);
+    celebrate("Checked in — today's win is logged 🔥");
     setTimeout(() => router.navigate("/"), 850);
   };
 

@@ -2,13 +2,15 @@ import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
 import { useTheme, fonts } from "@/lib/theme";
+import TopBar from "@/components/top-bar";
 
 export default function TabsLayout() {
   const { c } = useTheme();
   return (
     <Tabs
       screenOptions={{
-        headerShown: false,
+        headerShown: true,
+        header: () => <TopBar />,
         tabBarActiveTintColor: c.ink,
         tabBarInactiveTintColor: c.inkFaint,
         tabBarStyle: { backgroundColor: c.obsidian, borderTopColor: c.line },

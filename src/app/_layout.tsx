@@ -20,7 +20,9 @@ import {
 import { StoreProvider, useStore, isOnboarded } from "@/lib/store";
 import { SyncProvider } from "@/lib/sync";
 import { ThemeProvider, useTheme } from "@/lib/theme";
+import { CelebrationProvider } from "@/lib/celebrate";
 import Onboarding from "@/components/onboarding";
+import OttoChat from "@/components/otto-chat";
 
 function Shell() {
   const { c, isDark } = useTheme();
@@ -36,6 +38,8 @@ function Shell() {
           contentStyle: { backgroundColor: c.obsidian },
         }}
       />
+      {/* Otto coach FAB — hidden during onboarding. */}
+      {ready && !showOnboarding && <OttoChat />}
       {/* First-run focus-area onboarding overlays the app until completed. */}
       {showOnboarding && (
         <View style={StyleSheet.absoluteFill}>
@@ -68,7 +72,9 @@ export default function RootLayout() {
         <ThemeProvider>
           <StoreProvider>
             <SyncProvider>
-              <Shell />
+              <CelebrationProvider>
+                <Shell />
+              </CelebrationProvider>
             </SyncProvider>
           </StoreProvider>
         </ThemeProvider>
