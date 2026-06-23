@@ -30,9 +30,13 @@ export interface Plan {
   url?: string;
 }
 
-// Stripe Payment Links (public, safe to ship). Set in .env.local / EAS env.
-const LIFETIME_URL = process.env.EXPO_PUBLIC_STRIPE_LIFETIME_URL;
-const MONTHLY_URL = process.env.EXPO_PUBLIC_STRIPE_MONTHLY_URL;
+// Stripe Payment Links — these are the live, customer-facing checkout URLs
+// (public by design; safe to ship). An env var can override either one to swap
+// in test links during development.
+const LIFETIME_URL =
+  process.env.EXPO_PUBLIC_STRIPE_LIFETIME_URL || "https://buy.stripe.com/00w14n5ZE8pZ3nedFmfIs01";
+const MONTHLY_URL =
+  process.env.EXPO_PUBLIC_STRIPE_MONTHLY_URL || "https://buy.stripe.com/3cI8wP3RwdKjaPGatafIs02";
 
 export const TRIAL_DAYS = 3;
 
