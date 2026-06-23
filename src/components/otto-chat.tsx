@@ -19,6 +19,7 @@ import { Ionicons } from "@expo/vector-icons";
 
 import { useTheme, radius, fonts, type Palette } from "@/lib/theme";
 import { PressableScale, EASE } from "@/components/anim";
+import { voiceSupported } from "@/lib/voice";
 import {
   useStore,
   scoreFor,
@@ -27,6 +28,13 @@ import {
   winsToday,
   monthRevenue,
 } from "@/lib/store";
+
+// Native speech recognition only exists in a dev build — require it lazily so
+// the module never evaluates (and never crashes) inside Expo Go.
+const VoiceCapture: React.ComponentType<{
+  onTranscript: (t: string) => void;
+  onDone: (final: string) => void;
+}> | null = voiceSupported ? require("./voice-capture").default : null;
 
 interface Msg { id: string; role: "bot" | "user"; text: string }
 const SUGGESTIONS = ["How am I doing?", "What should I focus on?", "How much did I earn?", "My streak?"];
@@ -98,6 +106,8 @@ export default function OttoChat() {
   const [input, setInput] = useState("");
   const [typing, setTyping] = useState(false);
   const [speakOn, setSpeakOn] = useState(true);
+  const [listening, setListening] = useState(false);
+  const [transcript, setTranscript] = useState("");
   const [msgs, setMsgs] = useState<Msg[]>([
     { id: "intro", role: "bot", text: "Hey — I'm Otto, your TheLifeOS coach. Ask me anything about your day." },
   ]);
@@ -185,6 +195,23 @@ export default function OttoChat() {
     }, 650);
   };
 
+  const startVoice = () => {
+    if (!voiceSupported || !VoiceCapture) {
+      setMsgs((m) => [
+        ...m,
+        { id: String(Date.now()), role: "bot", text: "Voice needs the full app build (run npx expo run:ios on your Mac). In Expo Go I'm text-only — but I still speak my replies." },
+      ]);
+      return;
+    }
+    setTranscript("");
+    setListening(true);
+  };
+  const onVoiceDone = (final: string) => {
+    setListening(false);
+    setTranscript("");
+    if (final) ask(final);
+  };
+
   const backdropOpacity = anim.interpolate({ inputRange: [0, 1], outputRange: [0, 1] });
   const sheetTranslate = anim.interpolate({ inputRange: [0, 1], outputRange: [60, 0] });
   const sheetScale = anim.interpolate({ inputRange: [0, 1], outputRange: [0.97, 1] });
@@ -249,21 +276,36 @@ export default function OttoChat() {
                 ))}
               </ScrollView>
 
-              {/* input */}
-              <View style={[s.inputRow, { borderTopColor: c.line }]}>
-                <TextInput
-                  value={input}
-                  onChangeText={setInput}
-                  placeholder="Ask Otto…"
-                  placeholderTextColor={c.inkFaint}
-                  style={[s.input, { borderColor: c.line, backgroundColor: c.fill, color: c.ink }]}
-                  returnKeyType="send"
-                  onSubmitEditing={() => ask(input)}
-                />
-                <PressableScale style={[s.send, { backgroundColor: c.ink }]} onPress={() => ask(input)} scaleTo={0.9}>
-                  <Ionicons name="arrow-up" size={18} color={c.obsidian} />
-                </PressableScale>
-              </View>
+              {/* input / voice */}
+              {listening ? (
+                <View style={[s.listening, { borderTopColor: c.line }]}>
+                  {VoiceCapture && <VoiceCapture onTranscript={setTranscript} onDone={onVoiceDone} />}
+                  <Text style={[s.listeningText, { color: transcript ? c.ink : c.inkFaint }]} numberOfLines={2}>
+                    {transcript || "Listening… speak now"}
+                  </Text>
+                  <PressableScale style={[s.send, { backgroundColor: c.ink }]} onPress={() => onVoiceDone(transcript)} scaleTo={0.9}>
+                    <Ionicons name="stop" size={16} color={c.obsidian} />
+                  </PressableScale>
+                </View>
+              ) : (
+                <View style={[s.inputRow, { borderTopColor: c.line }]}>
+                  <PressableScale style={[s.mic, { borderColor: c.line, backgroundColor: c.fill }]} onPress={startVoice} scaleTo={0.9}>
+                    <Ionicons name="mic" size={18} color={c.inkMuted} />
+                  </PressableScale>
+                  <TextInput
+                    value={input}
+                    onChangeText={setInput}
+                    placeholder="Ask Otto…"
+                    placeholderTextColor={c.inkFaint}
+                    style={[s.input, { borderColor: c.line, backgroundColor: c.fill, color: c.ink }]}
+                    returnKeyType="send"
+                    onSubmitEditing={() => ask(input)}
+                  />
+                  <PressableScale style={[s.send, { backgroundColor: c.ink }]} onPress={() => ask(input)} scaleTo={0.9}>
+                    <Ionicons name="arrow-up" size={18} color={c.obsidian} />
+                  </PressableScale>
+                </View>
+              )}
             </BlurView>
           </Animated.View>
         </KeyboardAvoidingView>
@@ -305,6 +347,9 @@ const makeStyles = (c: Palette) =>
     inputRow: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 12, paddingTop: 10, borderTopWidth: 1 },
     input: { flex: 1, borderWidth: 1, borderRadius: radius.pill, paddingHorizontal: 16, paddingVertical: 11, fontFamily: fonts.body, fontSize: 14 },
     send: { width: 42, height: 42, borderRadius: 21, alignItems: "center", justifyContent: "center" },
+    mic: { width: 42, height: 42, borderRadius: 21, borderWidth: 1, alignItems: "center", justifyContent: "center" },
+    listening: { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 14, paddingTop: 12, borderTopWidth: 1 },
+    listeningText: { flex: 1, fontFamily: fonts.bodyMedium, fontSize: 14 },
   });
 
 const styles = StyleSheet.create({

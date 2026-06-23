@@ -35,6 +35,14 @@
             "backgroundColor": "#0a0a0b"
           }
         }
+      ],
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "TheLifeOS uses the mic so you can talk to Otto, your coach.",
+          "speechRecognitionPermission": "TheLifeOS transcribes your speech so Otto can answer you.",
+          "androidSpeechServicePackages": ["com.google.android.googlequicksearchbox"]
+        }
       ]
     ],
     "experiments": {
