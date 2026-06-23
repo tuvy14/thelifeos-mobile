@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { View, StyleSheet } from "react-native";
@@ -27,7 +28,15 @@ import OttoChat from "@/components/otto-chat";
 function Shell() {
   const { c, isDark } = useTheme();
   const { ready, profile } = useStore();
-  const showOnboarding = ready && !isOnboarded(profile);
+  // Capture the onboarding decision once hydration finishes, so completing the
+  // flow (which sets profile) doesn't dismiss the overlay before "ready".
+  const [onboarding, setOnboarding] = useState<boolean | null>(null);
+  useEffect(() => {
+    // Show whenever there's no profile (first run OR "redo onboarding"). Completing
+    // the flow sets the profile but we keep the overlay until onDone fires.
+    if (ready && !isOnboarded(profile)) setOnboarding(true);
+  }, [ready, profile]);
+  const showOnboarding = onboarding === true;
   return (
     <View style={{ flex: 1, backgroundColor: c.obsidian }}>
       <StatusBar style={isDark ? "light" : "dark"} />
@@ -43,7 +52,7 @@ function Shell() {
       {/* First-run focus-area onboarding overlays the app until completed. */}
       {showOnboarding && (
         <View style={StyleSheet.absoluteFill}>
-          <Onboarding />
+          <Onboarding onDone={() => setOnboarding(false)} />
         </View>
       )}
     </View>

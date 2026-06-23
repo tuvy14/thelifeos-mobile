@@ -5,6 +5,7 @@ import { Ionicons } from "@expo/vector-icons";
 
 import { useTheme, fonts, radius } from "@/lib/theme";
 import CommandPalette from "@/components/command-palette";
+import Logo from "@/components/logo";
 
 /** Shared top bar for the tab screens: wordmark + search (command palette) + theme toggle. */
 export default function TopBar() {
@@ -14,9 +15,12 @@ export default function TopBar() {
 
   return (
     <View style={[styles.bar, { paddingTop: insets.top + 8, backgroundColor: c.obsidian, borderBottomColor: c.line }]}>
-      <Text style={[styles.wordmark, { color: c.ink }]}>
-        TheLife<Text style={{ color: c.inkMuted }}>OS</Text>
-      </Text>
+      <View style={styles.brand}>
+        <Logo height={22} glow={false} />
+        <Text style={[styles.wordmark, { color: c.ink }]}>
+          TheLife<Text style={{ color: c.inkMuted }}>OS</Text>
+        </Text>
+      </View>
       <View style={styles.actions}>
         <Pressable
           onPress={() => setPaletteOpen(true)}
@@ -47,6 +51,7 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
     borderBottomWidth: 1,
   },
+  brand: { flexDirection: "row", alignItems: "center", gap: 9 },
   wordmark: { fontFamily: fonts.displayBold, fontSize: 17, letterSpacing: -0.3 },
   actions: { flexDirection: "row", gap: 10 },
   iconBtn: { width: 34, height: 34, borderRadius: radius.sm, borderWidth: 1, alignItems: "center", justifyContent: "center" },

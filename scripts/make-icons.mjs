@@ -16,15 +16,21 @@ mkdirSync(out, { recursive: true });
 const INK = "#fafafa";
 const OBSIDIAN = "#0a0a0b";
 
-/** Two concentric rings + core dot, centered in a 1024 canvas. */
+/** TheLifeOS brand mark — the website's infinity-with-rings logo, centered.
+ *  Source mark is viewBox 96×48; we scale + center it into a 1024 canvas. */
 function rings({ bg = "none", ink = INK, scale = 1 } = {}) {
-  const c = 512;
   const bgRect = bg === "none" ? "" : `<rect width="1024" height="1024" fill="${bg}"/>`;
+  const markW = 96, markH = 48;
+  const fit = (640 / markW) * scale; // mark spans ~62% of the canvas at scale 1
+  const tx = (1024 - markW * fit) / 2;
+  const ty = (1024 - markH * fit) / 2;
   return `<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
     ${bgRect}
-    <circle cx="${c}" cy="${c}" r="${340 * scale}" fill="none" stroke="${ink}" stroke-width="${40 * scale}"/>
-    <circle cx="${c}" cy="${c}" r="${215 * scale}" fill="none" stroke="${ink}" stroke-width="${28 * scale}"/>
-    <circle cx="${c}" cy="${c}" r="${58 * scale}" fill="${ink}"/>
+    <g transform="translate(${tx},${ty}) scale(${fit})" fill="none" stroke="${ink}" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M44 24C44 6 8 6 8 24C8 42 44 42 44 24C44 6 80 6 80 24C80 42 44 42 44 24"/>
+      <circle cx="62" cy="24" r="10.5"/>
+      <circle cx="62" cy="24" r="2.4" fill="${ink}"/>
+    </g>
   </svg>`;
 }
 
