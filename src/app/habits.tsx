@@ -3,83 +3,102 @@ import { View, Text, TextInput, Pressable, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
 import { SubScreen } from "@/components/sub-screen";
-import { theme, radius } from "@/lib/theme";
-import { useStore, habitDoneToday, habitStreak, HABIT_EMOJIS } from "@/lib/store";
+import { Card, EmptyState } from "@/components/ui";
+import { useTheme, radius, fonts, type Palette } from "@/lib/theme";
+import { useStore, isHabitDone, habitStreak, lastNDays, today } from "@/lib/store";
 
 export default function HabitsScreen() {
-  const { habits, addHabit, toggleHabit, deleteHabit } = useStore();
+  const { habits, habitLog, addHabit, deleteHabit, toggleHabit } = useStore();
+  const { c } = useTheme();
+  const s = makeStyles(c);
   const [name, setName] = useState("");
-  const [emoji, setEmoji] = useState(HABIT_EMOJIS[0]);
+  const [emoji, setEmoji] = useState("");
 
-  const submit = () => {
+  const days = lastNDays(7);
+  const doneToday = habits.filter((h) => (habitLog[today()] || []).includes(h.id)).length;
+
+  const add = () => {
+    if (!name.trim()) return;
     addHabit(name, emoji);
     setName("");
-    setEmoji(HABIT_EMOJIS[0]);
+    setEmoji("");
   };
 
   return (
-    <SubScreen eyebrow="DAILY REPS" title="Habits">
-      <View style={styles.card}>
-        <Text style={styles.cardLabel}>New habit</Text>
-        <View style={styles.emojiRow}>
-          {HABIT_EMOJIS.map((e) => (
-            <Pressable
-              key={e}
-              onPress={() => setEmoji(e)}
-              style={[styles.emoji, emoji === e && styles.emojiOn]}
-            >
-              <Text style={styles.emojiText}>{e}</Text>
-            </Pressable>
-          ))}
-        </View>
-        <View style={styles.addRow}>
+    <SubScreen eyebrow="Discipline" title="Habits">
+      <Text style={s.sub}>
+        {habits.length > 0 ? `${doneToday}/${habits.length} done today` : "Build the small daily reps."}
+      </Text>
+
+      <Card style={{ marginTop: 16 }} padding={16}>
+        <View style={s.addRow}>
+          <TextInput
+            value={emoji}
+            onChangeText={(t) => setEmoji(t.slice(0, 2))}
+            placeholder="🔥"
+            placeholderTextColor={c.inkFaint}
+            style={s.emojiInput}
+          />
           <TextInput
             value={name}
             onChangeText={setName}
-            placeholder="e.g. Read 10 pages"
-            placeholderTextColor={theme.inkFaint}
-            style={styles.input}
+            placeholder="New habit (e.g. Read 20 min)"
+            placeholderTextColor={c.inkFaint}
+            style={s.nameInput}
             returnKeyType="done"
-            onSubmitEditing={submit}
+            onSubmitEditing={add}
           />
-          <Pressable style={styles.addBtn} onPress={submit}>
-            <Ionicons name="add" size={22} color={theme.obsidian} />
+          <Pressable style={[s.addBtn, { backgroundColor: c.ink }]} onPress={add}>
+            <Ionicons name="add" size={20} color={c.obsidian} />
           </Pressable>
         </View>
-      </View>
+      </Card>
 
       {habits.length === 0 ? (
-        <View style={styles.empty}>
-          <Ionicons name="repeat-outline" size={28} color={theme.inkFaint} />
-          <Text style={styles.emptyText}>No habits yet. Add one to start a streak.</Text>
+        <View style={{ marginTop: 12 }}>
+          <EmptyState icon="flame-outline" text="Add one small daily habit — streaks are where momentum lives." />
         </View>
       ) : (
-        <View style={{ gap: 10 }}>
+        <View style={{ marginTop: 14, gap: 12 }}>
           {habits.map((h) => {
-            const done = habitDoneToday(h);
-            const s = habitStreak(h);
+            const done = isHabitDone(habitLog, h.id);
+            const stk = habitStreak(habitLog, h.id);
             return (
-              <View key={h.id} style={styles.item}>
-                <Pressable
-                  onPress={() => toggleHabit(h.id)}
-                  style={[styles.toggle, done && styles.toggleOn]}
-                >
-                  {done ? (
-                    <Ionicons name="checkmark" size={18} color={theme.obsidian} />
-                  ) : (
-                    <Text style={styles.toggleEmoji}>{h.emoji}</Text>
-                  )}
-                </Pressable>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.itemName}>{h.name}</Text>
-                  <Text style={styles.itemMeta}>
-                    {s > 0 ? `🔥 ${s}-day streak` : "Tap to mark done"}
-                  </Text>
+              <Card key={h.id} padding={14}>
+                <View style={s.habitRow}>
+                  <Pressable
+                    onPress={() => toggleHabit(h.id)}
+                    style={[s.toggle, { borderColor: done ? c.ink : c.line, backgroundColor: done ? c.ink : c.fill }]}
+                  >
+                    {done ? (
+                      <Ionicons name="checkmark" size={20} color={c.obsidian} />
+                    ) : (
+                      <Text style={{ fontSize: 18 }}>{h.emoji}</Text>
+                    )}
+                  </Pressable>
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <Text style={s.habitName} numberOfLines={1}>{h.name}</Text>
+                    <View style={s.streakRow}>
+                      <Ionicons name="flame" size={12} color={c.inkMuted} />
+                      <Text style={s.streakText}>{stk}-day streak</Text>
+                    </View>
+                  </View>
+                  <Pressable hitSlop={10} onPress={() => deleteHabit(h.id)}>
+                    <Ionicons name="trash-outline" size={15} color={c.inkFaint} />
+                  </Pressable>
                 </View>
-                <Pressable hitSlop={10} onPress={() => deleteHabit(h.id)}>
-                  <Ionicons name="trash-outline" size={16} color={theme.inkFaint} />
-                </Pressable>
-              </View>
+                <View style={s.weekRow}>
+                  {days.map((d) => {
+                    const did = (habitLog[d] || []).includes(h.id);
+                    return (
+                      <View
+                        key={d}
+                        style={{ flex: 1, height: 22, borderRadius: 5, backgroundColor: did ? c.ink : c.fillStrong }}
+                      />
+                    );
+                  })}
+                </View>
+              </Card>
             );
           })}
         </View>
@@ -88,69 +107,17 @@ export default function HabitsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  card: {
-    backgroundColor: theme.surface,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: theme.line,
-    padding: 16,
-    marginBottom: 18,
-  },
-  cardLabel: { color: theme.inkFaint, fontSize: 11, fontWeight: "700", letterSpacing: 1.2, marginBottom: 12 },
-  emojiRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 14 },
-  emoji: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: theme.line,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  emojiOn: { borderColor: theme.ink, backgroundColor: theme.surfaceAlt },
-  emojiText: { fontSize: 18 },
-  addRow: { flexDirection: "row", gap: 10 },
-  input: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: theme.line,
-    borderRadius: radius.md,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    color: theme.ink,
-    fontSize: 14,
-  },
-  addBtn: {
-    width: 46,
-    backgroundColor: theme.ink,
-    borderRadius: radius.md,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  empty: { alignItems: "center", gap: 10, paddingVertical: 48 },
-  emptyText: { color: theme.inkFaint, fontSize: 14, textAlign: "center" },
-  item: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    backgroundColor: theme.surface,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: theme.line,
-    padding: 14,
-  },
-  toggle: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: theme.line,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  toggleOn: { backgroundColor: theme.ink, borderColor: theme.ink },
-  toggleEmoji: { fontSize: 20 },
-  itemName: { color: theme.ink, fontSize: 15, fontWeight: "600" },
-  itemMeta: { color: theme.inkFaint, fontSize: 12, marginTop: 2 },
-});
+const makeStyles = (c: Palette) =>
+  StyleSheet.create({
+    sub: { fontFamily: fonts.body, fontSize: 13, color: c.inkMuted, marginTop: 4 },
+    addRow: { flexDirection: "row", gap: 8 },
+    emojiInput: { width: 52, borderWidth: 1, borderColor: c.line, borderRadius: radius.md, backgroundColor: c.fill, textAlign: "center", fontSize: 18, color: c.ink, paddingVertical: 12 },
+    nameInput: { flex: 1, borderWidth: 1, borderColor: c.line, borderRadius: radius.md, backgroundColor: c.fill, paddingHorizontal: 14, color: c.ink, fontFamily: fonts.body, fontSize: 14 },
+    addBtn: { width: 46, borderRadius: radius.md, alignItems: "center", justifyContent: "center" },
+    habitRow: { flexDirection: "row", alignItems: "center", gap: 14 },
+    toggle: { width: 44, height: 44, borderRadius: radius.md, borderWidth: 1, alignItems: "center", justifyContent: "center" },
+    habitName: { fontFamily: fonts.bodySemibold, fontSize: 14, color: c.ink },
+    streakRow: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 3 },
+    streakText: { fontFamily: fonts.body, fontSize: 12, color: c.inkMuted },
+    weekRow: { flexDirection: "row", gap: 5, marginTop: 14 },
+  });

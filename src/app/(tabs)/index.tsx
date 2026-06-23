@@ -1,33 +1,44 @@
 import { useState } from "react";
-import {
-  View,
-  Text,
-  TextInput,
-  Pressable,
-  StyleSheet,
-  ActivityIndicator,
-} from "react-native";
+import { View, Text, Pressable, StyleSheet, ActivityIndicator } from "react-native";
 import { router, type Href } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
 import { Screen } from "@/components/screen";
-import { theme, radius } from "@/lib/theme";
+import { Card, Eyebrow, IconBadge, Field } from "@/components/ui";
+import ScoreRing from "@/components/score-ring";
+import { useTheme, radius, fonts } from "@/lib/theme";
 import {
   useStore,
   scoreFor,
   todayLog,
   streak,
   winsToday,
+  getFocuses,
+  FOCUS_AREAS,
 } from "@/lib/store";
 
+const VIEW_ROUTE: Record<string, Href> = {
+  checkin: "/check-in",
+  wins: "/wins",
+  habits: "/habits",
+  goals: "/goals",
+  journal: "/journal",
+  fitness: "/fitness",
+  focus: "/focus",
+  money: "/money",
+  insights: "/insights",
+};
+const routeFor = (view: string): Href => VIEW_ROUTE[view] ?? "/check-in";
+
 export default function TodayScreen() {
-  const { ready, logs, wins, addWin } = useStore();
-  const [win, setWin] = useState("");
+  const { ready, logs, wins, profile, addWin } = useStore();
+  const { c } = useTheme();
+  const [winInput, setWinInput] = useState("");
 
   if (!ready) {
     return (
-      <View style={styles.loading}>
-        <ActivityIndicator color={theme.ink} />
+      <View style={[styles.loading, { backgroundColor: c.obsidian }]}>
+        <ActivityIndicator color={c.ink} />
       </View>
     );
   }
@@ -36,212 +47,189 @@ export default function TodayScreen() {
   const score = scoreFor(log);
   const s = streak(logs);
   const todays = winsToday(wins);
+  const myFocus = FOCUS_AREAS.filter((f) => getFocuses(profile).includes(f.id));
 
   const label =
     score >= 80 ? "Crushing it" : score >= 55 ? "On track" : score >= 30 ? "Getting there" : "Start the day";
-  const hero = !log
+  const heroMsg = !log
     ? "You haven't checked in yet today."
     : s >= 3
-      ? `${s} days strong — keep it alive.`
+      ? `${s} days strong — come back tomorrow to keep it alive.`
       : "Logged today. See you tomorrow.";
+  const onARoll = s >= 3;
 
+  const r1 = (n: number) => Math.round(n * 10) / 10;
   const metrics = [
-    { icon: "moon-outline", label: "Sleep", value: log ? `${round(log.sleep)}h` : "—" },
-    { icon: "water-outline", label: "Water", value: log ? `${round(log.water)}L` : "—" },
-    { icon: "flash-outline", label: "Deep work", value: log ? `${round(log.deepWork)}h` : "—" },
-    { icon: "happy-outline", label: "Mood", value: log ? `${log.mood}/10` : "—" },
-  ] as const;
-
-  const shortcuts: { href: Href; icon: keyof typeof Ionicons.glyphMap; label: string }[] = [
-    { href: "/habits", icon: "repeat-outline", label: "Habits" },
-    { href: "/journal", icon: "book-outline", label: "Journal" },
-    { href: "/goals", icon: "flag-outline", label: "Goals" },
-    { href: "/insights", icon: "stats-chart-outline", label: "Insights" },
+    { icon: "moon-outline" as const, label: "Sleep", value: log ? `${r1(log.sleep)}h` : "—" },
+    { icon: "water-outline" as const, label: "Water", value: log ? `${r1(log.water)}L` : "—" },
+    { icon: "flash-outline" as const, label: "Deep work", value: log ? `${r1(log.deepWork)}h` : "—" },
+    { icon: "happy-outline" as const, label: "Mood", value: log ? `${log.mood}/10` : "—" },
   ];
+
+  const submitWin = () => {
+    if (!winInput.trim()) return;
+    addWin(winInput);
+    setWinInput("");
+  };
 
   return (
     <Screen>
-      <Text style={styles.eyebrow}>LIFE SCORE · TODAY</Text>
-
       {/* Hero */}
-      <View style={styles.hero}>
-        <Text style={styles.score}>{score}</Text>
-        <Text style={styles.scoreMax}>/ 100</Text>
-        <Text style={styles.label}>{label}</Text>
-        <Text style={styles.heroMsg}>{hero}</Text>
-
-        <View style={styles.chipRow}>
-          <View style={styles.chip}>
-            <Text style={styles.chipText}>🔥 {s}-day streak</Text>
+      <Card padding={24} rounded={radius.xl} style={styles.hero}>
+        <ScoreRing score={score} size={128} />
+        <View style={styles.heroRight}>
+          <Eyebrow>Life score · today</Eyebrow>
+          <Text style={[styles.h2, { color: c.ink }]}>{label}</Text>
+          <Text style={[styles.heroMsg, { color: c.inkMuted }]}>{heroMsg}</Text>
+          <View style={styles.chipRow}>
+            <View
+              style={[
+                styles.chip,
+                { borderColor: onARoll ? c.chipBorder : c.line, backgroundColor: onARoll ? c.chipBg : c.fill },
+              ]}
+            >
+              <Text style={[styles.chipText, { color: c.ink }]}>
+                🔥 {s}-day streak{onARoll ? " · on a roll" : ""}
+              </Text>
+            </View>
+            <View style={[styles.chip, { borderColor: c.line, backgroundColor: c.fill }]}>
+              <Text style={[styles.chipText, { color: c.ink }]}>✦ {todays.length} wins today</Text>
+            </View>
           </View>
-          <View style={styles.chip}>
-            <Text style={styles.chipText}>✦ {todays.length} wins today</Text>
-          </View>
+          {!log && (
+            <Pressable
+              style={[styles.ctaPill, { backgroundColor: c.ink }]}
+              onPress={() => router.navigate("/check-in")}
+            >
+              <Text style={[styles.ctaText, { color: c.obsidian }]}>Check in</Text>
+              <Ionicons name="arrow-forward" size={14} color={c.obsidian} />
+            </Pressable>
+          )}
         </View>
+      </Card>
 
-        {!log && (
-          <Pressable
-            style={styles.cta}
-            onPress={() => router.navigate("/check-in")}
-          >
-            <Text style={styles.ctaText}>Check in</Text>
-            <Ionicons name="arrow-forward" size={16} color={theme.obsidian} />
-          </Pressable>
-        )}
-      </View>
+      {/* Your focus */}
+      {myFocus.length > 0 && (
+        <Card style={{ marginTop: 16 }}>
+          <View style={styles.rowCenter}>
+            <Ionicons name="locate-outline" size={15} color={c.inkMuted} />
+            <Text style={[styles.sectionLabel, { color: c.inkMuted }]}>YOUR FOCUS</Text>
+          </View>
+          <View style={styles.focusWrap}>
+            {myFocus.map((f) => (
+              <Pressable
+                key={f.id}
+                onPress={() => router.navigate(routeFor(f.views[0]))}
+                style={[styles.focusChip, { borderColor: c.line, backgroundColor: c.fill }]}
+              >
+                <Text style={[styles.focusChipText, { color: c.ink }]}>{f.label}</Text>
+                <Ionicons name="arrow-forward" size={13} color={c.inkFaint} />
+              </Pressable>
+            ))}
+          </View>
+        </Card>
+      )}
+
+      {/* Today's focus intention */}
+      {log?.intention ? (
+        <Card style={{ marginTop: 16 }} padding={16}>
+          <View style={styles.rowCenter}>
+            <IconBadge name="locate-outline" />
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.tinyLabel, { color: c.inkFaint }]}>TODAY&apos;S FOCUS</Text>
+              <Text style={[styles.intention, { color: c.ink }]}>{log.intention}</Text>
+            </View>
+          </View>
+        </Card>
+      ) : null}
 
       {/* Metrics */}
       <View style={styles.metricGrid}>
         {metrics.map((m) => (
-          <View key={m.label} style={styles.metricCard}>
-            <Ionicons name={m.icon as any} size={16} color={theme.inkMuted} />
-            <Text style={styles.metricValue}>{m.value}</Text>
-            <Text style={styles.metricLabel}>{m.label}</Text>
+          <Card key={m.label} style={styles.metricCard} padding={16}>
+            <IconBadge name={m.icon} />
+            <Text style={[styles.metricValue, { color: c.ink }]}>{m.value}</Text>
+            <Text style={[styles.metricLabel, { color: c.inkFaint }]}>{m.label}</Text>
+          </Card>
+        ))}
+      </View>
+
+      {/* Small wins */}
+      <Card style={{ marginTop: 16 }} padding={20}>
+        <View style={styles.winsHead}>
+          <View>
+            <Text style={[styles.cardTitle, { color: c.ink }]}>Small wins</Text>
+            <Text style={[styles.cardSub, { color: c.inkMuted }]}>The day is built from these.</Text>
           </View>
-        ))}
-      </View>
-
-      {/* Shortcuts */}
-      <View style={styles.shortcutRow}>
-        {shortcuts.map((sc) => (
-          <Pressable
-            key={sc.label}
-            style={styles.shortcut}
-            onPress={() => router.navigate(sc.href)}
-          >
-            <Ionicons name={sc.icon} size={18} color={theme.ink} />
-            <Text style={styles.shortcutLabel}>{sc.label}</Text>
-          </Pressable>
-        ))}
-      </View>
-
-      {/* Quick win */}
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>Small wins</Text>
-        <Text style={styles.cardSub}>The day is built from these.</Text>
-        <View style={styles.winRow}>
-          <TextInput
-            value={win}
-            onChangeText={setWin}
-            placeholder="What went well?"
-            placeholderTextColor={theme.inkFaint}
-            style={styles.input}
-            returnKeyType="done"
-            onSubmitEditing={() => {
-              addWin(win);
-              setWin("");
-            }}
-          />
-          <Pressable
-            style={styles.addBtn}
-            onPress={() => {
-              addWin(win);
-              setWin("");
-            }}
-          >
-            <Ionicons name="add" size={22} color={theme.obsidian} />
+          <Pressable onPress={() => router.navigate("/wins")}>
+            <Text style={[styles.viewAll, { color: c.inkMuted }]}>View all →</Text>
           </Pressable>
         </View>
-        {todays.slice(0, 3).map((w) => (
-          <View key={w.id} style={styles.winItem}>
-            <Ionicons name="checkmark-circle" size={16} color={theme.ink} />
-            <Text style={styles.winText}>{w.text}</Text>
-          </View>
-        ))}
-        {todays.length > 0 && (
-          <Pressable onPress={() => router.navigate("/wins")}>
-            <Text style={styles.viewAll}>View all →</Text>
+        <View style={styles.winRow}>
+          <Field
+            value={winInput}
+            onChangeText={setWinInput}
+            placeholder="What went well? Log a small win…"
+            style={{ flex: 1 }}
+            returnKeyType="done"
+            onSubmitEditing={submitWin}
+          />
+          <Pressable style={[styles.addBtn, { backgroundColor: c.ink }]} onPress={submitWin}>
+            <Ionicons name="add" size={20} color={c.obsidian} />
           </Pressable>
+        </View>
+        {todays.length > 0 && (
+          <View style={{ marginTop: 14, gap: 8 }}>
+            {todays.map((w) => (
+              <View key={w.id} style={[styles.winItem, { borderColor: c.line }]}>
+                <View style={[styles.winCheck, { backgroundColor: c.ink }]}>
+                  <Ionicons name="checkmark" size={11} color={c.obsidian} />
+                </View>
+                <Text style={[styles.winText, { color: c.ink }]}>{w.text}</Text>
+              </View>
+            ))}
+          </View>
         )}
-      </View>
+      </Card>
     </Screen>
   );
 }
 
-const round = (n: number) => Math.round(n * 10) / 10;
-
 const styles = StyleSheet.create({
-  loading: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: theme.obsidian },
-  eyebrow: { color: theme.inkFaint, fontSize: 11, fontWeight: "700", letterSpacing: 1.5, marginBottom: 8 },
-  hero: {
-    backgroundColor: theme.surface,
-    borderRadius: radius.xl,
-    borderWidth: 1,
-    borderColor: theme.line,
-    padding: 24,
-    alignItems: "center",
+  loading: { flex: 1, alignItems: "center", justifyContent: "center" },
+  hero: { flexDirection: "row", alignItems: "center", gap: 18 },
+  heroRight: { flex: 1 },
+  h2: { fontFamily: fonts.displayBold, fontSize: 26, letterSpacing: -0.6, marginTop: 8 },
+  heroMsg: { fontFamily: fonts.body, fontSize: 13, marginTop: 3, lineHeight: 18 },
+  chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 14 },
+  chip: { borderRadius: radius.pill, borderWidth: 1, paddingHorizontal: 11, paddingVertical: 6 },
+  chipText: { fontFamily: fonts.monoMedium, fontSize: 11 },
+  ctaPill: {
+    flexDirection: "row", alignItems: "center", gap: 6, alignSelf: "flex-start",
+    borderRadius: radius.pill, paddingHorizontal: 14, paddingVertical: 9, marginTop: 12,
   },
-  score: { color: theme.ink, fontSize: 72, fontWeight: "800", letterSpacing: -2, lineHeight: 76 },
-  scoreMax: { color: theme.inkFaint, fontSize: 13, marginTop: -4 },
-  label: { color: theme.ink, fontSize: 26, fontWeight: "800", marginTop: 10, letterSpacing: -0.5 },
-  heroMsg: { color: theme.inkMuted, fontSize: 14, marginTop: 4, textAlign: "center" },
-  chipRow: { flexDirection: "row", gap: 8, marginTop: 16, flexWrap: "wrap", justifyContent: "center" },
-  chip: { borderWidth: 1, borderColor: theme.line, borderRadius: radius.pill, paddingHorizontal: 12, paddingVertical: 7 },
-  chipText: { color: theme.ink, fontSize: 12, fontWeight: "600" },
-  cta: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: theme.ink,
-    borderRadius: radius.pill,
-    paddingHorizontal: 18,
-    paddingVertical: 11,
-    marginTop: 18,
+  ctaText: { fontFamily: fonts.bodyBold, fontSize: 13 },
+  rowCenter: { flexDirection: "row", alignItems: "center", gap: 10 },
+  sectionLabel: { fontFamily: fonts.bodyBold, fontSize: 11, letterSpacing: 1.2 },
+  focusWrap: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 12 },
+  focusChip: {
+    flexDirection: "row", alignItems: "center", gap: 6, borderRadius: radius.pill,
+    borderWidth: 1, paddingHorizontal: 13, paddingVertical: 8,
   },
-  ctaText: { color: theme.obsidian, fontWeight: "700", fontSize: 14 },
-  metricGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 16 },
-  metricCard: {
-    flexGrow: 1,
-    flexBasis: "47%",
-    backgroundColor: theme.surface,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: theme.line,
-    padding: 16,
-  },
-  metricValue: { color: theme.ink, fontSize: 24, fontWeight: "800", marginTop: 8 },
-  metricLabel: { color: theme.inkFaint, fontSize: 12, marginTop: 2 },
-  shortcutRow: { flexDirection: "row", gap: 10, marginTop: 12 },
-  shortcut: {
-    flex: 1,
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: theme.surface,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: theme.line,
-    paddingVertical: 14,
-  },
-  shortcutLabel: { color: theme.inkMuted, fontSize: 11, fontWeight: "600" },
-  card: {
-    backgroundColor: theme.surface,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: theme.line,
-    padding: 20,
-    marginTop: 16,
-  },
-  cardTitle: { color: theme.ink, fontSize: 17, fontWeight: "700" },
-  cardSub: { color: theme.inkMuted, fontSize: 12, marginTop: 2, marginBottom: 14 },
+  focusChipText: { fontFamily: fonts.bodyMedium, fontSize: 14 },
+  tinyLabel: { fontFamily: fonts.bodyMedium, fontSize: 11, letterSpacing: 1 },
+  intention: { fontFamily: fonts.bodyMedium, fontSize: 14, marginTop: 2 },
+  metricGrid: { flexDirection: "row", flexWrap: "wrap", gap: 12, marginTop: 16 },
+  metricCard: { flexGrow: 1, flexBasis: "46%" },
+  metricValue: { fontFamily: fonts.displayBold, fontSize: 24, marginTop: 10, letterSpacing: -0.5 },
+  metricLabel: { fontFamily: fonts.body, fontSize: 12, marginTop: 2 },
+  winsHead: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14 },
+  cardTitle: { fontFamily: fonts.display, fontSize: 17 },
+  cardSub: { fontFamily: fonts.body, fontSize: 12, marginTop: 2 },
+  viewAll: { fontFamily: fonts.body, fontSize: 12 },
   winRow: { flexDirection: "row", gap: 10 },
-  input: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: theme.line,
-    borderRadius: radius.md,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    color: theme.ink,
-    fontSize: 14,
-  },
-  addBtn: {
-    width: 46,
-    backgroundColor: theme.ink,
-    borderRadius: radius.md,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  winItem: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 12 },
-  winText: { color: theme.ink, fontSize: 14, flex: 1 },
-  viewAll: { color: theme.inkMuted, fontSize: 13, marginTop: 14 },
+  addBtn: { width: 46, borderRadius: radius.md, alignItems: "center", justifyContent: "center" },
+  winItem: { flexDirection: "row", alignItems: "center", gap: 12, borderWidth: 1, borderRadius: radius.md, paddingHorizontal: 12, paddingVertical: 10 },
+  winCheck: { width: 20, height: 20, borderRadius: 10, alignItems: "center", justifyContent: "center" },
+  winText: { fontFamily: fonts.body, fontSize: 14, flex: 1 },
 });

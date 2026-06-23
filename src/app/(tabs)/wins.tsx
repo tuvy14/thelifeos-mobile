@@ -1,64 +1,95 @@
 import { useState } from "react";
-import { View, Text, TextInput, Pressable, StyleSheet } from "react-native";
+import { View, Text, Pressable, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
 import { Screen } from "@/components/screen";
-import { theme, radius } from "@/lib/theme";
-import { useStore, today } from "@/lib/store";
+import { Card, Eyebrow, Field, EmptyState } from "@/components/ui";
+import { useTheme, radius, fonts } from "@/lib/theme";
+import { useStore, winsSorted, today } from "@/lib/store";
 
 export default function WinsScreen() {
   const { wins, addWin, deleteWin } = useStore();
-  const [text, setText] = useState("");
+  const { c } = useTheme();
+  const [input, setInput] = useState("");
+
+  const sorted = winsSorted(wins);
+  const weekAgo = Date.now() - 7 * 864e5;
+  const weekCount = sorted.filter((w) => w.ts >= weekAgo).length;
+  const todayCount = sorted.filter((w) => w.date === today()).length;
 
   const submit = () => {
-    addWin(text);
-    setText("");
+    if (!input.trim()) return;
+    addWin(input);
+    setInput("");
   };
 
-  const todayStr = today();
+  const groups = sorted.reduce<Record<string, typeof sorted>>((acc, w) => {
+    (acc[w.date] = acc[w.date] || []).push(w);
+    return acc;
+  }, {});
+
+  const dateLabel = (date: string) =>
+    date === today()
+      ? "Today"
+      : new Date(date + "T00:00:00").toLocaleDateString(undefined, {
+          weekday: "short",
+          month: "short",
+          day: "numeric",
+        });
 
   return (
     <Screen>
-      <Text style={styles.eyebrow}>MOMENTUM</Text>
-      <Text style={styles.title}>Small wins</Text>
-      <Text style={styles.sub}>Log the little things. They compound.</Text>
-
-      <View style={styles.row}>
-        <TextInput
-          value={text}
-          onChangeText={setText}
-          placeholder="What went well today?"
-          placeholderTextColor={theme.inkFaint}
-          style={styles.input}
-          returnKeyType="done"
-          onSubmitEditing={submit}
-        />
-        <Pressable style={styles.addBtn} onPress={submit}>
-          <Ionicons name="add" size={22} color={theme.obsidian} />
-        </Pressable>
+      <View style={styles.header}>
+        <View style={{ flex: 1 }}>
+          <Eyebrow>Momentum</Eyebrow>
+          <Text style={[styles.title, { color: c.ink }]}>Small wins</Text>
+          <Text style={[styles.sub, { color: c.inkMuted }]}>
+            <Text style={{ color: c.ink }}>{todayCount}</Text> today ·{" "}
+            <Text style={{ color: c.ink }}>{weekCount}</Text> this week ·{" "}
+            <Text style={{ color: c.ink }}>{sorted.length}</Text> all time
+          </Text>
+        </View>
+        <Ionicons name="sparkles-outline" size={26} color={c.inkFaint} />
       </View>
 
-      {wins.length === 0 ? (
-        <View style={styles.empty}>
-          <Ionicons name="sparkles-outline" size={28} color={theme.inkFaint} />
-          <Text style={styles.emptyText}>No wins yet. Add your first one above.</Text>
+      <Card style={{ marginTop: 18 }}>
+        <View style={styles.row}>
+          <Field
+            value={input}
+            onChangeText={setInput}
+            placeholder="Log a small win…"
+            style={{ flex: 1 }}
+            returnKeyType="done"
+            onSubmitEditing={submit}
+          />
+          <Pressable style={[styles.addBtn, { backgroundColor: c.ink }]} onPress={submit}>
+            <Ionicons name="add" size={20} color={c.obsidian} />
+          </Pressable>
+        </View>
+      </Card>
+
+      {sorted.length === 0 ? (
+        <View style={{ marginTop: 12 }}>
+          <EmptyState icon="sparkles-outline" text="No wins yet. Start with one small thing that went well today — momentum compounds from here." />
         </View>
       ) : (
-        <View style={{ marginTop: 18, gap: 10 }}>
-          {wins.map((w) => (
-            <View key={w.id} style={styles.item}>
-              <View style={styles.check}>
-                <Ionicons name="checkmark" size={13} color={theme.obsidian} />
+        <View style={{ marginTop: 20, gap: 20 }}>
+          {Object.entries(groups).map(([date, items]) => (
+            <View key={date}>
+              <Text style={[styles.groupLabel, { color: c.inkFaint }]}>{dateLabel(date).toUpperCase()}</Text>
+              <View style={{ gap: 8 }}>
+                {items.map((w) => (
+                  <View key={w.id} style={[styles.item, { borderColor: c.line, backgroundColor: c.card }]}>
+                    <View style={[styles.check, { backgroundColor: c.ink }]}>
+                      <Ionicons name="checkmark" size={11} color={c.obsidian} />
+                    </View>
+                    <Text style={[styles.itemText, { color: c.ink }]}>{w.text}</Text>
+                    <Pressable hitSlop={10} onPress={() => deleteWin(w.id)}>
+                      <Ionicons name="trash-outline" size={15} color={c.inkFaint} />
+                    </Pressable>
+                  </View>
+                ))}
               </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.itemText}>{w.text}</Text>
-                <Text style={styles.itemDate}>
-                  {w.date === todayStr ? "Today" : w.date}
-                </Text>
-              </View>
-              <Pressable hitSlop={10} onPress={() => deleteWin(w.id)}>
-                <Ionicons name="trash-outline" size={16} color={theme.inkFaint} />
-              </Pressable>
             </View>
           ))}
         </View>
@@ -68,47 +99,13 @@ export default function WinsScreen() {
 }
 
 const styles = StyleSheet.create({
-  eyebrow: { color: theme.inkFaint, fontSize: 11, fontWeight: "700", letterSpacing: 1.5 },
-  title: { color: theme.ink, fontSize: 28, fontWeight: "800", marginTop: 4, letterSpacing: -0.5 },
-  sub: { color: theme.inkMuted, fontSize: 14, marginTop: 2, marginBottom: 18 },
+  header: { flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between" },
+  title: { fontFamily: fonts.displayBold, fontSize: 28, letterSpacing: -0.5, marginTop: 8 },
+  sub: { fontFamily: fonts.body, fontSize: 13, marginTop: 4 },
   row: { flexDirection: "row", gap: 10 },
-  input: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: theme.line,
-    borderRadius: radius.md,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    color: theme.ink,
-    fontSize: 14,
-  },
-  addBtn: {
-    width: 46,
-    backgroundColor: theme.ink,
-    borderRadius: radius.md,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  empty: { alignItems: "center", gap: 10, paddingVertical: 48 },
-  emptyText: { color: theme.inkFaint, fontSize: 14 },
-  item: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    backgroundColor: theme.surface,
-    borderWidth: 1,
-    borderColor: theme.line,
-    borderRadius: radius.md,
-    padding: 14,
-  },
-  check: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: theme.ink,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  itemText: { color: theme.ink, fontSize: 14 },
-  itemDate: { color: theme.inkFaint, fontSize: 11, marginTop: 2 },
+  addBtn: { width: 46, borderRadius: radius.md, alignItems: "center", justifyContent: "center" },
+  groupLabel: { fontFamily: fonts.monoMedium, fontSize: 11, letterSpacing: 1.4, marginBottom: 10 },
+  item: { flexDirection: "row", alignItems: "center", gap: 12, borderWidth: 1, borderRadius: radius.md, paddingHorizontal: 14, paddingVertical: 12 },
+  check: { width: 20, height: 20, borderRadius: 10, alignItems: "center", justifyContent: "center" },
+  itemText: { fontFamily: fonts.body, fontSize: 14, flex: 1 },
 });

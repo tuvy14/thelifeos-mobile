@@ -3,98 +3,134 @@ import { View, Text, TextInput, Pressable, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
 import { SubScreen } from "@/components/sub-screen";
-import { theme, radius } from "@/lib/theme";
+import { Card, EmptyState, PrimaryButton } from "@/components/ui";
+import { useTheme, radius, fonts, type Palette } from "@/lib/theme";
 import { useStore } from "@/lib/store";
+
+const CATEGORIES = ["Money", "Body", "Audience", "Skill", "Mind", "Life"];
 
 export default function GoalsScreen() {
   const { goals, addGoal, setGoalProgress, deleteGoal } = useStore();
+  const { c } = useTheme();
+  const s = makeStyles(c);
+  const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [target, setTarget] = useState("");
   const [unit, setUnit] = useState("");
+  const [category, setCategory] = useState(CATEGORIES[0]);
 
-  const submit = () => {
-    const t = parseFloat(target);
-    addGoal(title, Number.isFinite(t) ? t : 1, unit);
-    setTitle("");
-    setTarget("");
-    setUnit("");
+  const completed = goals.filter((g) => g.current >= g.target).length;
+
+  const create = () => {
+    if (!title.trim() || !+target) return;
+    addGoal({ title, category, current: 0, target: +target, unit });
+    setTitle(""); setTarget(""); setUnit(""); setOpen(false);
+  };
+  const step = (id: string, current: number, tgt: number, dir: number) => {
+    const inc = Math.max(1, Math.round(tgt / 20));
+    setGoalProgress(id, Math.min(Math.max(0, current + dir * inc), tgt));
   };
 
   return (
-    <SubScreen eyebrow="WHERE YOU'RE HEADED" title="Goals">
-      <View style={styles.card}>
-        <Text style={styles.cardLabel}>New goal</Text>
-        <TextInput
-          value={title}
-          onChangeText={setTitle}
-          placeholder="e.g. Run 100 km this month"
-          placeholderTextColor={theme.inkFaint}
-          style={styles.input}
-        />
-        <View style={styles.twoCol}>
-          <TextInput
-            value={target}
-            onChangeText={setTarget}
-            placeholder="Target"
-            placeholderTextColor={theme.inkFaint}
-            keyboardType="numeric"
-            style={[styles.input, { flex: 1, marginTop: 0 }]}
-          />
-          <TextInput
-            value={unit}
-            onChangeText={setUnit}
-            placeholder="Unit (km, books…)"
-            placeholderTextColor={theme.inkFaint}
-            style={[styles.input, { flex: 1.4, marginTop: 0 }]}
-          />
-        </View>
-        <Pressable style={styles.addBtn} onPress={submit}>
-          <Text style={styles.addBtnText}>Add goal</Text>
+    <SubScreen eyebrow="Direction" title="Goals">
+      <View style={s.headRow}>
+        <Text style={s.sub}>
+          {goals.length > 0 ? `${completed}/${goals.length} reached` : "Aim at something that matters."}
+        </Text>
+        <Pressable style={[s.newBtn, { backgroundColor: c.ink }]} onPress={() => setOpen((o) => !o)}>
+          <Ionicons name="add" size={16} color={c.obsidian} />
+          <Text style={[s.newText, { color: c.obsidian }]}>New goal</Text>
         </Pressable>
       </View>
 
-      {goals.length === 0 ? (
-        <View style={styles.empty}>
-          <Ionicons name="flag-outline" size={28} color={theme.inkFaint} />
-          <Text style={styles.emptyText}>No goals yet. Aim at something.</Text>
+      {open && (
+        <Card style={{ marginTop: 14, gap: 12 }} padding={16}>
+          <TextInput
+            value={title} onChangeText={setTitle} placeholder="Goal (e.g. Reach 10k followers)"
+            placeholderTextColor={c.inkFaint} style={s.input}
+          />
+          <View style={{ flexDirection: "row", gap: 10 }}>
+            <TextInput
+              value={target} onChangeText={setTarget} placeholder="Target" keyboardType="numeric"
+              placeholderTextColor={c.inkFaint} style={[s.input, { width: 110 }]}
+            />
+            <TextInput
+              value={unit} onChangeText={setUnit} placeholder="unit ($, kg, followers…)"
+              placeholderTextColor={c.inkFaint} style={[s.input, { flex: 1 }]}
+            />
+          </View>
+          <View style={s.catWrap}>
+            {CATEGORIES.map((cat) => {
+              const on = category === cat;
+              return (
+                <Pressable
+                  key={cat} onPress={() => setCategory(cat)}
+                  style={[s.cat, { borderColor: on ? c.ink : c.line, backgroundColor: on ? c.ink : "transparent" }]}
+                >
+                  <Text style={[s.catText, { color: on ? c.obsidian : c.inkMuted }]}>{cat}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+          <PrimaryButton label="Add goal" onPress={create} />
+        </Card>
+      )}
+
+      {goals.length === 0 && !open ? (
+        <View style={{ marginTop: 12 }}>
+          <EmptyState icon="flag-outline" text="Set a target you care about — progress feels good when it's visible." />
         </View>
       ) : (
-        <View style={{ gap: 12 }}>
+        <View style={{ marginTop: 14, gap: 12 }}>
           {goals.map((g) => {
-            const pct = Math.min(1, g.current / (g.target || 1));
+            const pct = Math.min(Math.round((g.current / g.target) * 100) || 0, 100);
             const done = g.current >= g.target;
             return (
-              <View key={g.id} style={styles.goal}>
-                <View style={styles.goalHead}>
-                  <Text style={styles.goalTitle}>{g.title}</Text>
+              <Card key={g.id} padding={16}>
+                <View style={s.goalTop}>
+                  <View style={{ flex: 1 }}>
+                    <View style={s.titleRow}>
+                      <Text style={s.goalTitle} numberOfLines={1}>{g.title}</Text>
+                      {done && (
+                        <View style={[s.donePill, { backgroundColor: c.ink }]}>
+                          <Text style={[s.donePillText, { color: c.obsidian }]}>DONE</Text>
+                        </View>
+                      )}
+                    </View>
+                    <View style={[s.catBadge, { borderColor: c.line }]}>
+                      <Text style={s.catBadgeText}>{g.category}</Text>
+                    </View>
+                  </View>
                   <Pressable hitSlop={10} onPress={() => deleteGoal(g.id)}>
-                    <Ionicons name="trash-outline" size={16} color={theme.inkFaint} />
+                    <Ionicons name="trash-outline" size={15} color={c.inkFaint} />
                   </Pressable>
                 </View>
-                <View style={styles.track}>
-                  <View style={[styles.fill, { width: `${pct * 100}%` }]} />
-                </View>
-                <View style={styles.goalFoot}>
-                  <Text style={[styles.goalNums, done && { color: theme.ink }]}>
-                    {round(g.current)} / {round(g.target)} {g.unit}
-                    {done ? "  ✓" : ""}
+
+                <View style={s.numsRow}>
+                  <Text style={s.nums}>
+                    {g.current.toLocaleString()} / {g.target.toLocaleString()} {g.unit}
                   </Text>
-                  <View style={styles.stepRow}>
-                    <Pressable
-                      style={styles.step}
-                      onPress={() => setGoalProgress(g.id, g.current - stepFor(g.target))}
-                    >
-                      <Ionicons name="remove" size={16} color={theme.ink} />
-                    </Pressable>
-                    <Pressable
-                      style={styles.step}
-                      onPress={() => setGoalProgress(g.id, g.current + stepFor(g.target))}
-                    >
-                      <Ionicons name="add" size={16} color={theme.ink} />
-                    </Pressable>
-                  </View>
+                  <Text style={s.pct}>{pct}%</Text>
                 </View>
-              </View>
+                <View style={[s.track, { backgroundColor: c.fillStrong }]}>
+                  <View style={[s.fill, { width: `${pct}%`, backgroundColor: c.ink }]} />
+                </View>
+
+                <View style={s.stepRow}>
+                  <Pressable style={[s.step, { borderColor: c.line }]} onPress={() => step(g.id, g.current, g.target, -1)}>
+                    <Ionicons name="remove" size={16} color={c.inkMuted} />
+                  </Pressable>
+                  <Pressable style={[s.step, { borderColor: c.line }]} onPress={() => step(g.id, g.current, g.target, 1)}>
+                    <Ionicons name="add" size={16} color={c.inkMuted} />
+                  </Pressable>
+                  <TextInput
+                    defaultValue={String(g.current)}
+                    onEndEditing={(e) => setGoalProgress(g.id, +e.nativeEvent.text || 0)}
+                    keyboardType="numeric" placeholder="set" placeholderTextColor={c.inkFaint}
+                    style={[s.setInput, { borderColor: c.line, color: c.ink }]}
+                  />
+                </View>
+              </Card>
             );
           })}
         </View>
@@ -103,61 +139,29 @@ export default function GoalsScreen() {
   );
 }
 
-const round = (n: number) => Math.round(n * 100) / 100;
-const stepFor = (target: number) => (target >= 50 ? 5 : target >= 10 ? 1 : 0.5);
-
-const styles = StyleSheet.create({
-  card: {
-    backgroundColor: theme.surface,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: theme.line,
-    padding: 16,
-    marginBottom: 18,
-  },
-  cardLabel: { color: theme.inkFaint, fontSize: 11, fontWeight: "700", letterSpacing: 1.2, marginBottom: 12 },
-  input: {
-    borderWidth: 1,
-    borderColor: theme.line,
-    borderRadius: radius.md,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    color: theme.ink,
-    fontSize: 14,
-    marginTop: 10,
-  },
-  twoCol: { flexDirection: "row", gap: 10, marginTop: 10 },
-  addBtn: {
-    backgroundColor: theme.ink,
-    borderRadius: radius.md,
-    paddingVertical: 13,
-    alignItems: "center",
-    marginTop: 12,
-  },
-  addBtnText: { color: theme.obsidian, fontSize: 14, fontWeight: "800" },
-  empty: { alignItems: "center", gap: 10, paddingVertical: 48 },
-  emptyText: { color: theme.inkFaint, fontSize: 14, textAlign: "center" },
-  goal: {
-    backgroundColor: theme.surface,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: theme.line,
-    padding: 16,
-  },
-  goalHead: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 },
-  goalTitle: { color: theme.ink, fontSize: 15, fontWeight: "700", flex: 1, paddingRight: 10 },
-  track: { height: 8, borderRadius: 4, backgroundColor: theme.line, overflow: "hidden" },
-  fill: { height: 8, borderRadius: 4, backgroundColor: theme.ink },
-  goalFoot: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 12 },
-  goalNums: { color: theme.inkMuted, fontSize: 13, fontWeight: "600" },
-  stepRow: { flexDirection: "row", gap: 8 },
-  step: {
-    width: 34,
-    height: 34,
-    borderRadius: radius.sm,
-    borderWidth: 1,
-    borderColor: theme.line,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-});
+const makeStyles = (c: Palette) =>
+  StyleSheet.create({
+    headRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 4 },
+    sub: { fontFamily: fonts.body, fontSize: 13, color: c.inkMuted, flex: 1 },
+    newBtn: { flexDirection: "row", alignItems: "center", gap: 6, borderRadius: radius.pill, paddingHorizontal: 14, paddingVertical: 9 },
+    newText: { fontFamily: fonts.bodyBold, fontSize: 13 },
+    input: { borderWidth: 1, borderColor: c.line, borderRadius: radius.md, backgroundColor: c.fill, paddingHorizontal: 14, paddingVertical: 12, color: c.ink, fontFamily: fonts.body, fontSize: 14 },
+    catWrap: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+    cat: { borderWidth: 1, borderRadius: radius.pill, paddingHorizontal: 13, paddingVertical: 7 },
+    catText: { fontFamily: fonts.bodyBold, fontSize: 12 },
+    goalTop: { flexDirection: "row", alignItems: "flex-start", gap: 10 },
+    titleRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+    goalTitle: { fontFamily: fonts.display, fontSize: 16, color: c.ink, flexShrink: 1 },
+    donePill: { borderRadius: radius.pill, paddingHorizontal: 8, paddingVertical: 2 },
+    donePillText: { fontFamily: fonts.monoSemibold, fontSize: 9, letterSpacing: 1 },
+    catBadge: { alignSelf: "flex-start", borderWidth: 1, borderRadius: radius.pill, paddingHorizontal: 8, paddingVertical: 2, marginTop: 6 },
+    catBadgeText: { fontFamily: fonts.body, fontSize: 11, color: c.inkMuted },
+    numsRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 16 },
+    nums: { fontFamily: fonts.mono, fontSize: 13, color: c.inkMuted },
+    pct: { fontFamily: fonts.displayBold, fontSize: 15, color: c.ink },
+    track: { height: 8, borderRadius: 4, overflow: "hidden", marginTop: 8 },
+    fill: { height: 8, borderRadius: 4 },
+    stepRow: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 14 },
+    step: { width: 34, height: 34, borderRadius: radius.sm, borderWidth: 1, alignItems: "center", justifyContent: "center" },
+    setInput: { width: 90, height: 34, borderWidth: 1, borderRadius: radius.sm, paddingHorizontal: 12, fontFamily: fonts.body, fontSize: 14 },
+  });

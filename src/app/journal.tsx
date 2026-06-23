@@ -3,58 +3,55 @@ import { View, Text, TextInput, Pressable, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
 import { SubScreen } from "@/components/sub-screen";
-import { theme, radius } from "@/lib/theme";
+import { Card, EmptyState, PrimaryButton } from "@/components/ui";
+import { useTheme, radius, fonts } from "@/lib/theme";
 import { useStore, today } from "@/lib/store";
 
 export default function JournalScreen() {
   const { journal, addJournal, deleteJournal } = useStore();
+  const { c } = useTheme();
   const [text, setText] = useState("");
 
   const submit = () => {
+    if (!text.trim()) return;
     addJournal(text);
     setText("");
   };
 
-  const todayStr = today();
+  const dateLabel = (date: string, ts: number) =>
+    `${date === today() ? "Today" : new Date(date + "T00:00:00").toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })} · ${new Date(ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
 
   return (
-    <SubScreen eyebrow="CLEAR YOUR HEAD" title="Journal">
-      <View style={styles.card}>
-        <Text style={styles.cardLabel}>What&apos;s on your mind?</Text>
+    <SubScreen eyebrow="Reflect" title="Journal">
+      <Card padding={16}>
+        <Text style={[styles.label, { color: c.inkFaint }]}>WHAT&apos;S ON YOUR MIND?</Text>
         <TextInput
           value={text}
           onChangeText={setText}
           placeholder="Write freely. No one else sees this."
-          placeholderTextColor={theme.inkFaint}
-          style={styles.input}
+          placeholderTextColor={c.inkFaint}
           multiline
+          style={[styles.input, { borderColor: c.line, backgroundColor: c.fill, color: c.ink }]}
         />
-        <Pressable style={styles.addBtn} onPress={submit}>
-          <Ionicons name="add" size={18} color={theme.obsidian} />
-          <Text style={styles.addBtnText}>Add entry</Text>
-        </Pressable>
-      </View>
+        <PrimaryButton label="Add entry" icon="add" onPress={submit} style={{ marginTop: 12 }} />
+      </Card>
 
       {journal.length === 0 ? (
-        <View style={styles.empty}>
-          <Ionicons name="book-outline" size={28} color={theme.inkFaint} />
-          <Text style={styles.emptyText}>No entries yet. Start writing.</Text>
+        <View style={{ marginTop: 12 }}>
+          <EmptyState icon="book-outline" text="Nothing written yet. A sentence a day adds up." />
         </View>
       ) : (
-        <View style={{ gap: 12 }}>
+        <View style={{ marginTop: 16, gap: 12 }}>
           {journal.map((j) => (
-            <View key={j.id} style={styles.entry}>
-              <View style={styles.entryHead}>
-                <Text style={styles.entryDate}>
-                  {j.date === todayStr ? "Today" : j.date} ·{" "}
-                  {new Date(j.ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                </Text>
+            <Card key={j.id} padding={16}>
+              <View style={styles.head}>
+                <Text style={[styles.date, { color: c.inkFaint }]}>{dateLabel(j.date, j.ts)}</Text>
                 <Pressable hitSlop={10} onPress={() => deleteJournal(j.id)}>
-                  <Ionicons name="trash-outline" size={16} color={theme.inkFaint} />
+                  <Ionicons name="trash-outline" size={15} color={c.inkFaint} />
                 </Pressable>
               </View>
-              <Text style={styles.entryText}>{j.text}</Text>
-            </View>
+              <Text style={[styles.text, { color: c.ink }]}>{j.text}</Text>
+            </Card>
           ))}
         </View>
       )}
@@ -63,47 +60,9 @@ export default function JournalScreen() {
 }
 
 const styles = StyleSheet.create({
-  card: {
-    backgroundColor: theme.surface,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: theme.line,
-    padding: 16,
-    marginBottom: 18,
-  },
-  cardLabel: { color: theme.inkFaint, fontSize: 11, fontWeight: "700", letterSpacing: 1.2, marginBottom: 12 },
-  input: {
-    borderWidth: 1,
-    borderColor: theme.line,
-    borderRadius: radius.md,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    color: theme.ink,
-    fontSize: 14,
-    minHeight: 96,
-    textAlignVertical: "top",
-  },
-  addBtn: {
-    flexDirection: "row",
-    gap: 6,
-    backgroundColor: theme.ink,
-    borderRadius: radius.md,
-    paddingVertical: 13,
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: 12,
-  },
-  addBtnText: { color: theme.obsidian, fontSize: 14, fontWeight: "800" },
-  empty: { alignItems: "center", gap: 10, paddingVertical: 48 },
-  emptyText: { color: theme.inkFaint, fontSize: 14, textAlign: "center" },
-  entry: {
-    backgroundColor: theme.surface,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: theme.line,
-    padding: 16,
-  },
-  entryHead: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 },
-  entryDate: { color: theme.inkFaint, fontSize: 12, fontWeight: "600" },
-  entryText: { color: theme.ink, fontSize: 14, lineHeight: 21 },
+  label: { fontFamily: fonts.bodyBold, fontSize: 11, letterSpacing: 1.2, marginBottom: 10 },
+  input: { borderWidth: 1, borderRadius: radius.md, paddingHorizontal: 14, paddingVertical: 12, fontFamily: fonts.body, fontSize: 14, minHeight: 96, textAlignVertical: "top" },
+  head: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 },
+  date: { fontFamily: fonts.mono, fontSize: 11 },
+  text: { fontFamily: fonts.body, fontSize: 14, lineHeight: 21 },
 });

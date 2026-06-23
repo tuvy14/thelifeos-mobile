@@ -4,7 +4,8 @@ import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import type { ReactNode } from "react";
 
-import { theme, radius } from "@/lib/theme";
+import { useTheme, radius, fonts } from "@/lib/theme";
+import { Eyebrow } from "@/components/ui";
 
 /** Stack screen wrapper: safe-area scroll + back chevron + eyebrow/title header. */
 export function SubScreen({
@@ -17,13 +18,14 @@ export function SubScreen({
   children: ReactNode;
 }) {
   const insets = useSafeAreaInsets();
+  const { c } = useTheme();
   return (
     <ScrollView
-      style={{ flex: 1, backgroundColor: theme.obsidian }}
+      style={{ flex: 1, backgroundColor: c.obsidian }}
       contentContainerStyle={{
         paddingTop: insets.top + 8,
         paddingHorizontal: 20,
-        paddingBottom: 48,
+        paddingBottom: 56,
       }}
       keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={false}
@@ -31,13 +33,13 @@ export function SubScreen({
       <Pressable
         style={styles.back}
         hitSlop={10}
-        onPress={() => (router.canGoBack() ? router.back() : router.navigate("/more"))}
+        onPress={() => (router.canGoBack() ? router.back() : router.navigate("/(tabs)/more"))}
       >
-        <Ionicons name="chevron-back" size={20} color={theme.inkMuted} />
-        <Text style={styles.backText}>Back</Text>
+        <Ionicons name="chevron-back" size={20} color={c.inkMuted} />
+        <Text style={[styles.backText, { color: c.inkMuted }]}>Back</Text>
       </Pressable>
-      <Text style={styles.eyebrow}>{eyebrow}</Text>
-      <Text style={styles.title}>{title}</Text>
+      <Eyebrow>{eyebrow}</Eyebrow>
+      <Text style={[styles.title, { color: c.ink }]}>{title}</Text>
       <View style={{ marginTop: 18 }}>{children}</View>
     </ScrollView>
   );
@@ -55,7 +57,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
     borderRadius: radius.sm,
   },
-  backText: { color: theme.inkMuted, fontSize: 14, fontWeight: "600" },
-  eyebrow: { color: theme.inkFaint, fontSize: 11, fontWeight: "700", letterSpacing: 1.5 },
-  title: { color: theme.ink, fontSize: 28, fontWeight: "800", marginTop: 4, letterSpacing: -0.5 },
+  backText: { fontFamily: fonts.bodySemibold, fontSize: 14 },
+  title: { fontFamily: fonts.displayBold, fontSize: 28, marginTop: 8, letterSpacing: -0.5 },
 });
