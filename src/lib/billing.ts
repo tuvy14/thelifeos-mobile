@@ -6,7 +6,7 @@ import * as WebBrowser from "expo-web-browser";
  *
  *  The MONTHLY link must be a Stripe **subscription** Payment Link with a 3-day
  *  free trial configured on its price (Stripe collects the card but charges
- *  nothing for 3 days). The LIFETIME link is a one-time $300 payment.
+ *  nothing for 3 days). The LIFETIME link is a one-time $200 payment.
  *
  *  Apple Pay: on iOS the Payment Link opens in an SFSafariViewController (via
  *  WebBrowser), which natively offers the **Apple Pay** sheet whenever Apple Pay
@@ -51,7 +51,7 @@ export const PLANS: Plan[] = [
   {
     id: "lifetime",
     name: "Lifetime",
-    price: "$300",
+    price: "$200",
     cadence: "one-time",
     blurb: "Pay once. TheLifeOS is yours forever — no subscription.",
     badge: "Best value",

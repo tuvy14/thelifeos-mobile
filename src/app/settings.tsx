@@ -34,7 +34,7 @@ export default function SettingsScreen() {
         ? "Pro monthly · active"
         : onTrial
           ? `${trialLeft} day${trialLeft === 1 ? "" : "s"} left · tap to manage`
-          : "Lifetime $300 · or $15/mo";
+          : "Lifetime $200 · or $15/mo";
 
   const counts = [
     { label: "Check-ins", value: logs.length },
