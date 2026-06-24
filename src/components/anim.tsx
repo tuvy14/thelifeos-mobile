@@ -9,7 +9,7 @@ import {
   type ViewStyle,
   type TextStyle,
 } from "react-native";
-import * as Haptics from "expo-haptics";
+import { haptic, type HapticKind } from "@/lib/feedback";
 
 /** The web app's signature easing (framer `[0.16, 1, 0.3, 1]`). */
 export const EASE = Easing.bezier(0.16, 1, 0.3, 1);
@@ -27,6 +27,7 @@ export function PressableScale({
   disabled,
   hitSlop,
   scaleTo = 0.96,
+  haptics = "light",
 }: {
   children: ReactNode;
   style?: StyleProp<ViewStyle>;
@@ -35,6 +36,7 @@ export function PressableScale({
   disabled?: boolean;
   hitSlop?: number;
   scaleTo?: number;
+  haptics?: HapticKind | false;
 }) {
   const scale = useRef(new Animated.Value(1)).current;
   const to = (v: number) =>
@@ -42,7 +44,7 @@ export function PressableScale({
   const press = () => {
     if (disabled) return;
     to(scaleTo);
-    try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch { /* ignore */ }
+    if (haptics) haptic(haptics);
   };
   return (
     <AnimatedPressable
@@ -105,6 +107,36 @@ export function CountUp({
     return () => v.removeListener(id);
   }, [value, duration, v]);
   return <Text style={style}>{format ? format(n) : String(Math.round(n))}</Text>;
+}
+
+/** A slow, gentle breathing scale — draws the eye to a primary CTA without
+ *  shouting. No-ops (renders flat) when `active` is false. */
+export function Pulse({
+  children,
+  active = true,
+  style,
+}: {
+  children: ReactNode;
+  active?: boolean;
+  style?: StyleProp<ViewStyle>;
+}) {
+  const v = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (!active) {
+      v.setValue(0);
+      return;
+    }
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(v, { toValue: 1, duration: 1150, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
+        Animated.timing(v, { toValue: 0, duration: 1150, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [active, v]);
+  const scale = v.interpolate({ inputRange: [0, 1], outputRange: [1, 1.025] });
+  return <Animated.View style={[style, { transform: [{ scale }] }]}>{children}</Animated.View>;
 }
 
 /** A progress bar whose fill animates to `pct` (0–100) on mount/change. */

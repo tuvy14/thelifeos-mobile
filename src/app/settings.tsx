@@ -8,11 +8,13 @@ import { PressableScale } from "@/components/anim";
 import { useTheme, radius, fonts, type Palette } from "@/lib/theme";
 import { useStore, isPaid, trialDaysLeft } from "@/lib/store";
 import { useSync } from "@/lib/sync";
+import { useFeedbackPrefs, setSoundEnabled, setHapticsEnabled, haptic, playSfx } from "@/lib/feedback";
 
 export default function SettingsScreen() {
   const { logs, wins, habits, goals, journal, workouts, revenue, expenses, calendar, profile, resetAll, resetOnboarding } = useStore();
   const { c, isDark, toggle } = useTheme();
   const { configured, email, status } = useSync();
+  const fb = useFeedbackPrefs();
   const s = makeStyles(c);
 
   const syncSub = !configured
@@ -72,6 +74,40 @@ export default function SettingsScreen() {
         </View>
         <View style={[s.toggle, { backgroundColor: isDark ? c.fillStrong : c.ink }]}>
           <View style={[s.knob, { backgroundColor: isDark ? c.ink : c.obsidian, alignSelf: isDark ? "flex-start" : "flex-end" }]} />
+        </View>
+      </PressableScale>
+
+      <Text style={s.section}>FEEDBACK</Text>
+      <PressableScale
+        style={s.row}
+        haptics={false}
+        onPress={() => { const next = !fb.sound; setSoundEnabled(next); if (next) playSfx("success"); }}
+      >
+        <View style={[s.icon, { borderColor: c.line, backgroundColor: c.fill }]}>
+          <Ionicons name={fb.sound ? "volume-high" : "volume-mute"} size={18} color={c.ink} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={s.rowTitle}>Sound effects</Text>
+          <Text style={s.rowSub}>{fb.sound ? "On · subtle chimes" : "Off · silent"}</Text>
+        </View>
+        <View style={[s.toggle, { backgroundColor: fb.sound ? c.ink : c.fillStrong }]}>
+          <View style={[s.knob, { backgroundColor: fb.sound ? c.obsidian : c.ink, alignSelf: fb.sound ? "flex-end" : "flex-start" }]} />
+        </View>
+      </PressableScale>
+      <PressableScale
+        style={[s.row, { marginTop: 10 }]}
+        haptics={false}
+        onPress={() => { const next = !fb.haptics; setHapticsEnabled(next); if (next) haptic("medium"); }}
+      >
+        <View style={[s.icon, { borderColor: c.line, backgroundColor: c.fill }]}>
+          <Ionicons name="pulse" size={18} color={c.ink} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={s.rowTitle}>Haptics</Text>
+          <Text style={s.rowSub}>{fb.haptics ? "On · taps & buzzes" : "Off"}</Text>
+        </View>
+        <View style={[s.toggle, { backgroundColor: fb.haptics ? c.ink : c.fillStrong }]}>
+          <View style={[s.knob, { backgroundColor: fb.haptics ? c.obsidian : c.ink, alignSelf: fb.haptics ? "flex-end" : "flex-start" }]} />
         </View>
       </PressableScale>
 

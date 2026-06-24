@@ -9,10 +9,10 @@ import {
   type ReactNode,
 } from "react";
 import { Animated, Dimensions, Easing, StyleSheet, Text, View } from "react-native";
-import * as Haptics from "expo-haptics";
 import { Ionicons } from "@expo/vector-icons";
 
 import { useTheme, radius, fonts } from "@/lib/theme";
+import { cheer } from "@/lib/feedback";
 
 interface CelebrateCtx {
   celebrate: (message?: string) => void;
@@ -117,7 +117,7 @@ export function CelebrationProvider({ children }: { children: ReactNode }) {
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const celebrate = useCallback((message?: string) => {
-    try { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); } catch { /* ignore */ }
+    cheer("celebrate", "success"); // success haptic + chime, both gated on prefs
     setSeed((s) => s + 1);
     setConfettiOn(true);
     if (confettiTimer.current) clearTimeout(confettiTimer.current);

@@ -6,7 +6,7 @@ import { Ionicons } from "@expo/vector-icons";
 
 import { Screen } from "@/components/screen";
 import { Card, Eyebrow, IconBadge } from "@/components/ui";
-import { PressableScale, Reveal } from "@/components/anim";
+import { PressableScale, Reveal, CountUp, Pulse } from "@/components/anim";
 import ScoreRing from "@/components/score-ring";
 import { useTheme, radius, fonts } from "@/lib/theme";
 import {
@@ -98,13 +98,15 @@ export default function TodayScreen() {
   const firstName = profile?.name ? profile.name.split(" ")[0] : null;
 
   const r1 = (n: number) => Math.round(n * 10) / 10;
-  const stats: { icon: keyof typeof Ionicons.glyphMap; label: string; value: string }[] = [
-    { icon: "flame-outline", label: "Day streak", value: String(stk) },
-    { icon: "pulse-outline", label: "Avg score · 7d", value: avg7 ? String(avg7) : "—" },
-    { icon: "calendar-outline", label: "Check-ins", value: String(checkins) },
-    { icon: "sparkles-outline", label: "Total wins", value: String(totalWins) },
-    { icon: "flash-outline", label: "Deep work", value: `${deepWorkTotal}h` },
-    { icon: "trophy-outline", label: "Best score", value: bestScore ? String(bestScore) : "—" },
+  const int = (n: number) => String(Math.round(n));
+  const dash = (real: number) => (n: number) => (real ? int(n) : "—");
+  const stats: { icon: keyof typeof Ionicons.glyphMap; label: string; value: number; format: (n: number) => string }[] = [
+    { icon: "flame-outline", label: "Day streak", value: stk, format: int },
+    { icon: "pulse-outline", label: "Avg score · 7d", value: avg7, format: dash(avg7) },
+    { icon: "calendar-outline", label: "Check-ins", value: checkins, format: int },
+    { icon: "sparkles-outline", label: "Total wins", value: totalWins, format: int },
+    { icon: "flash-outline", label: "Deep work", value: deepWorkTotal, format: (n) => `${int(n)}h` },
+    { icon: "trophy-outline", label: "Best score", value: bestScore, format: dash(bestScore) },
   ];
 
   const todayMetrics = [
@@ -147,15 +149,18 @@ export default function TodayScreen() {
               </View>
             </View>
           </View>
-          <PressableScale
-            style={[styles.ctaPill, { backgroundColor: log ? c.fill : c.ink, borderColor: c.line, borderWidth: log ? 1 : 0 }]}
-            onPress={() => router.navigate("/check-in")}
-          >
-            <Text style={[styles.ctaText, { color: log ? c.ink : c.obsidian }]}>
-              {log ? "Edit today's check-in" : "Start daily check-in"}
-            </Text>
-            <Ionicons name="arrow-forward" size={15} color={log ? c.ink : c.obsidian} />
-          </PressableScale>
+          <Pulse active={!log} style={{ marginTop: 18 }}>
+            <PressableScale
+              style={[styles.ctaPill, { backgroundColor: log ? c.fill : c.ink, borderColor: c.line, borderWidth: log ? 1 : 0 }]}
+              onPress={() => router.navigate("/check-in")}
+              haptics="medium"
+            >
+              <Text style={[styles.ctaText, { color: log ? c.ink : c.obsidian }]}>
+                {log ? "Edit today's check-in" : "Start daily check-in"}
+              </Text>
+              <Ionicons name="arrow-forward" size={15} color={log ? c.ink : c.obsidian} />
+            </PressableScale>
+          </Pulse>
         </Card>
       </Reveal>
 
@@ -203,7 +208,7 @@ export default function TodayScreen() {
           <Reveal key={m.label} delay={150 + idx * 50} style={styles.statCard}>
             <Card padding={15}>
               <IconBadge name={m.icon} />
-              <Text style={[styles.statValue, { color: c.ink }]}>{m.value}</Text>
+              <CountUp value={m.value} format={m.format} duration={1000} style={[styles.statValue, { color: c.ink }]} />
               <Text style={[styles.statLabel, { color: c.inkFaint }]}>{m.label}</Text>
             </Card>
           </Reveal>
@@ -297,7 +302,7 @@ const styles = StyleSheet.create({
   chipText: { fontFamily: fonts.monoMedium, fontSize: 11 },
   ctaPill: {
     flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7,
-    borderRadius: radius.pill, paddingVertical: 13, marginTop: 18,
+    borderRadius: radius.pill, paddingVertical: 13,
   },
   ctaText: { fontFamily: fonts.bodyBold, fontSize: 14 },
   rowCenter: { flexDirection: "row", alignItems: "center", gap: 10 },

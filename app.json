@@ -45,9 +45,12 @@
         {
           "microphonePermission": "TheLifeOS uses the mic so you can talk to Otto, your coach.",
           "speechRecognitionPermission": "TheLifeOS transcribes your speech so Otto can answer you.",
-          "androidSpeechServicePackages": ["com.google.android.googlequicksearchbox"]
+          "androidSpeechServicePackages": [
+            "com.google.android.googlequicksearchbox"
+          ]
         }
-      ]
+      ],
+      "expo-audio"
     ],
     "experiments": {
       "typedRoutes": true,

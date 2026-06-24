@@ -7,6 +7,7 @@ import { Card, Eyebrow, Field, EmptyState } from "@/components/ui";
 import { PressableScale, Reveal } from "@/components/anim";
 import { useTheme, radius, fonts } from "@/lib/theme";
 import { useStore, winsSorted, today } from "@/lib/store";
+import { cheer } from "@/lib/feedback";
 
 export default function WinsScreen() {
   const { wins, addWin, deleteWin } = useStore();
@@ -22,6 +23,7 @@ export default function WinsScreen() {
     if (!input.trim()) return;
     addWin(input);
     setInput("");
+    cheer("win", "medium"); // small win, real feedback
   };
 
   const groups = sorted.reduce<Record<string, typeof sorted>>((acc, w) => {
