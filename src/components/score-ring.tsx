@@ -26,13 +26,24 @@ export default function ScoreRing({
   const progress = useRef(new Animated.Value(0)).current;
   const [shown, setShown] = useState(0);
   useEffect(() => {
-    const id = progress.addListener(({ value }) => setShown(Math.round(value * 100)));
-    Animated.timing(progress, {
+    let lastN = -1;
+    const id = progress.addListener(({ value }) => {
+      const n = Math.round(value * 100);
+      if (n !== lastN) {
+        lastN = n; // only re-render on integer changes (≤100 instead of ~60/sec)
+        setShown(n);
+      }
+    });
+    const anim = Animated.timing(progress, {
       toValue: clamped / 100,
       duration: 900,
       useNativeDriver: false,
-    }).start();
-    return () => progress.removeListener(id);
+    });
+    anim.start();
+    return () => {
+      progress.removeListener(id);
+      anim.stop();
+    };
   }, [clamped, progress]);
 
   const offset = progress.interpolate({

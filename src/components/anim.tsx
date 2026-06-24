@@ -99,14 +99,32 @@ export function CountUp({
   style?: StyleProp<TextStyle>;
 }) {
   const v = useRef(new Animated.Value(0)).current;
-  const [n, setN] = useState(0);
+  // Keep the latest formatter in a ref so a fresh `format` identity each render
+  // (e.g. inline arrows) doesn't restart the animation.
+  const fmtRef = useRef<(n: number) => string>(format ?? ((n) => String(Math.round(n))));
+  fmtRef.current = format ?? ((n) => String(Math.round(n)));
+  const [text, setText] = useState(() => fmtRef.current(0));
+  const last = useRef<string | null>(null);
   useEffect(() => {
-    const id = v.addListener(({ value: x }) => setN(x));
+    last.current = null;
+    const id = v.addListener(({ value: x }) => {
+      const next = fmtRef.current(x);
+      // Only re-render when the displayed string actually changes — turns ~60
+      // re-renders/sec into at most one per distinct value.
+      if (next !== last.current) {
+        last.current = next;
+        setText(next);
+      }
+    });
     v.setValue(0);
-    Animated.timing(v, { toValue: value, duration, easing: EASE, useNativeDriver: false }).start();
-    return () => v.removeListener(id);
+    const anim = Animated.timing(v, { toValue: value, duration, easing: EASE, useNativeDriver: false });
+    anim.start();
+    return () => {
+      v.removeListener(id);
+      anim.stop();
+    };
   }, [value, duration, v]);
-  return <Text style={style}>{format ? format(n) : String(Math.round(n))}</Text>;
+  return <Text style={style}>{text}</Text>;
 }
 
 /** A slow, gentle breathing scale — draws the eye to a primary CTA without

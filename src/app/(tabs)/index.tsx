@@ -81,6 +81,11 @@ export default function TodayScreen() {
   // Overview stats
   const avg7 = avgScore(logs, 7);
   const week = scoreHistory(logs, 7);
+  // Momentum: this week's average vs the previous 7 days.
+  const prevWeek = scoreHistory(logs, 14).slice(0, 7).filter((d) => d.score > 0);
+  const prevAvg = prevWeek.length ? Math.round(prevWeek.reduce((a, b) => a + b.score, 0) / prevWeek.length) : 0;
+  const momentum = avg7 - prevAvg;
+  const hasMomentum = avg7 > 0 && prevAvg > 0;
   const checkins = logs.length;
   const totalWins = wins.length;
   const deepWorkTotal = Math.round(logs.reduce((a, l) => a + (l.deepWork || 0), 0));
@@ -90,7 +95,9 @@ export default function TodayScreen() {
   const label =
     score >= 80 ? "Crushing it" : score >= 55 ? "On track" : score >= 30 ? "Getting there" : log ? "Logged today" : "Start the day";
   const heroMsg = !log
-    ? "Run today's check-in to set your life score."
+    ? stk > 0
+      ? `Check in to keep your ${stk}-day streak alive.`
+      : "Run today's check-in to set your life score."
     : stk >= 3
       ? `${stk} days strong — keep it alive.`
       : "Logged today. See you tomorrow.";
@@ -107,6 +114,13 @@ export default function TodayScreen() {
     { icon: "sparkles-outline", label: "Total wins", value: totalWins, format: int },
     { icon: "flash-outline", label: "Deep work", value: deepWorkTotal, format: (n) => `${int(n)}h` },
     { icon: "trophy-outline", label: "Best score", value: bestScore, format: dash(bestScore) },
+  ];
+
+  const quickActions: { icon: keyof typeof Ionicons.glyphMap; label: string; route: Href }[] = [
+    { icon: "create-outline", label: "Check-in", route: "/check-in" },
+    { icon: "add-circle-outline", label: "Log win", route: "/wins" },
+    { icon: "stats-chart-outline", label: "Insights", route: "/insights" },
+    { icon: "repeat-outline", label: "Habits", route: "/habits" },
   ];
 
   const todayMetrics = [
@@ -164,17 +178,45 @@ export default function TodayScreen() {
         </Card>
       </Reveal>
 
+      {/* Quick actions */}
+      <Reveal delay={95} style={{ marginTop: 14 }}>
+        <View style={styles.quickRow}>
+          {quickActions.map((q) => (
+            <PressableScale
+              key={q.label}
+              style={[styles.quickItem, { backgroundColor: c.card, borderColor: c.line }]}
+              onPress={() => router.navigate(q.route)}
+            >
+              <View style={[styles.quickIcon, { backgroundColor: c.fill, borderColor: c.line }]}>
+                <Ionicons name={q.icon} size={18} color={c.ink} />
+              </View>
+              <Text style={[styles.quickLabel, { color: c.inkMuted }]}>{q.label}</Text>
+            </PressableScale>
+          ))}
+        </View>
+      </Reveal>
+
       {/* This week */}
-      <Reveal delay={110} style={{ marginTop: 14 }}>
+      <Reveal delay={130} style={{ marginTop: 14 }}>
         <Card padding={18}>
           <View style={styles.weekHead}>
             <View style={styles.rowCenter}>
               <Ionicons name="bar-chart-outline" size={15} color={c.inkMuted} />
               <Text style={[styles.sectionLabel, { color: c.inkMuted }]}>THIS WEEK</Text>
             </View>
-            <Text style={[styles.weekAvg, { color: c.inkFaint }]}>
-              avg <Text style={{ color: c.ink, fontFamily: fonts.displayBold }}>{avg7 || 0}</Text>
-            </Text>
+            <View style={styles.rowCenter}>
+              {hasMomentum && (
+                <View style={[styles.momentum, { borderColor: c.line, backgroundColor: c.fill }]}>
+                  <Ionicons name={momentum >= 0 ? "trending-up" : "trending-down"} size={12} color={c.ink} />
+                  <Text style={[styles.momentumText, { color: c.ink }]}>
+                    {momentum >= 0 ? "+" : ""}{momentum} vs last wk
+                  </Text>
+                </View>
+              )}
+              <Text style={[styles.weekAvg, { color: c.inkFaint }]}>
+                avg <Text style={{ color: c.ink, fontFamily: fonts.displayBold }}>{avg7 || 0}</Text>
+              </Text>
+            </View>
           </View>
           <View style={styles.bars}>
             {week.map((d, i) => {
@@ -307,6 +349,12 @@ const styles = StyleSheet.create({
   ctaText: { fontFamily: fonts.bodyBold, fontSize: 14 },
   rowCenter: { flexDirection: "row", alignItems: "center", gap: 10 },
   sectionLabel: { fontFamily: fonts.bodyBold, fontSize: 11, letterSpacing: 1.2 },
+  quickRow: { flexDirection: "row", gap: 10 },
+  quickItem: { flex: 1, alignItems: "center", gap: 8, borderWidth: 1, borderRadius: radius.lg, paddingVertical: 14 },
+  quickIcon: { width: 38, height: 38, borderRadius: radius.md, borderWidth: 1, alignItems: "center", justifyContent: "center" },
+  quickLabel: { fontFamily: fonts.bodyMedium, fontSize: 11.5 },
+  momentum: { flexDirection: "row", alignItems: "center", gap: 4, borderWidth: 1, borderRadius: radius.pill, paddingHorizontal: 9, paddingVertical: 4 },
+  momentumText: { fontFamily: fonts.monoMedium, fontSize: 10.5 },
   weekHead: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   weekAvg: { fontFamily: fonts.mono, fontSize: 12 },
   bars: { flexDirection: "row", alignItems: "flex-end", gap: 8, height: 92, marginTop: 16 },
