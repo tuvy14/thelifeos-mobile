@@ -9,7 +9,8 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.thelifeos.app"
+      "bundleIdentifier": "com.thelifeos.app",
+      "usesAppleSignIn": true
     },
     "android": {
       "package": "com.thelifeos.app",
@@ -27,6 +28,7 @@
     },
     "plugins": [
       "expo-router",
+      "expo-apple-authentication",
       [
         "expo-splash-screen",
         {

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { View, Text, Pressable, StyleSheet, ActivityIndicator } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import * as AppleAuthentication from "expo-apple-authentication";
 
 import { SubScreen } from "@/components/sub-screen";
 import { Card, Field, PrimaryButton } from "@/components/ui";
@@ -9,8 +10,8 @@ import { useTheme, radius, fonts, type Palette } from "@/lib/theme";
 import { useSync } from "@/lib/sync";
 
 export default function AccountScreen() {
-  const { configured, email, status, lastSyncedAt, signIn, signUp, signOut, backupNow, restoreNow } = useSync();
-  const { c } = useTheme();
+  const { configured, email, status, lastSyncedAt, appleAvailable, signIn, signUp, signInWithApple, signOut, backupNow, restoreNow } = useSync();
+  const { c, isDark } = useTheme();
   const s = makeStyles(c);
 
   const [mode, setMode] = useState<"signin" | "signup">("signin");
@@ -39,6 +40,12 @@ export default function AccountScreen() {
     const res = await fn();
     setBusy(false);
     note(res.ok ? ok : res.error || "Failed.", !res.ok);
+  };
+  const onApple = async () => {
+    setBusy(true); setMsg(null);
+    const res = await signInWithApple();
+    setBusy(false);
+    if (!res.ok && res.error) note(res.error, true); // cancel → no error → stay quiet
   };
 
   if (!configured) {
@@ -103,6 +110,28 @@ export default function AccountScreen() {
         <Field value={password} onChangeText={setPassword} placeholder="Password" secureTextEntry returnKeyType="done" onSubmitEditing={submit} />
         <PrimaryButton label={busy ? "…" : mode === "signin" ? "Sign in" : "Create account"} onPress={submit} disabled={busy} style={{ marginTop: 4 }} />
       </Card>
+
+      {appleAvailable && (
+        <>
+          <View style={s.orRow}>
+            <View style={s.orLine} />
+            <Text style={s.orText}>or</Text>
+            <View style={s.orLine} />
+          </View>
+          <AppleAuthentication.AppleAuthenticationButton
+            buttonType={AppleAuthentication.AppleAuthenticationButtonType.CONTINUE}
+            buttonStyle={
+              isDark
+                ? AppleAuthentication.AppleAuthenticationButtonStyle.WHITE
+                : AppleAuthentication.AppleAuthenticationButtonStyle.BLACK
+            }
+            cornerRadius={radius.lg}
+            style={s.appleBtn}
+            onPress={onApple}
+          />
+        </>
+      )}
+
       {msg && <Text style={[s.msg, err && { color: c.danger }]}>{msg}</Text>}
     </SubScreen>
   );
@@ -135,4 +164,8 @@ const makeStyles = (c: Palette) =>
     segBtn: { flex: 1, paddingVertical: 10, borderRadius: radius.sm, alignItems: "center" },
     segText: { fontFamily: fonts.bodyBold, fontSize: 13 },
     msg: { fontFamily: fonts.body, fontSize: 13, color: c.inkMuted, lineHeight: 19, marginTop: 14, textAlign: "center" },
+    orRow: { flexDirection: "row", alignItems: "center", gap: 12, marginVertical: 18 },
+    orLine: { flex: 1, height: 1, backgroundColor: c.line },
+    orText: { fontFamily: fonts.monoMedium, fontSize: 11, letterSpacing: 0.6, color: c.inkFaint, textTransform: "uppercase" },
+    appleBtn: { height: 52, width: "100%" },
   });

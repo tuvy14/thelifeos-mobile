@@ -18,7 +18,8 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { AppState } from "react-native";
+import { AppState, Platform } from "react-native";
+import * as AppleAuthentication from "expo-apple-authentication";
 import type { Session } from "@supabase/supabase-js";
 
 import { getSupabase, isSupabaseConfigured } from "@/lib/supabase";
@@ -86,8 +87,10 @@ interface SyncCtx {
   email: string | null;
   status: SyncStatus;
   lastSyncedAt: number | null;
+  appleAvailable: boolean;
   signIn: (email: string, password: string) => Promise<{ ok: boolean; error?: string }>;
   signUp: (email: string, password: string) => Promise<{ ok: boolean; error?: string; needsConfirm?: boolean }>;
+  signInWithApple: () => Promise<{ ok: boolean; error?: string }>;
   signOut: () => Promise<void>;
   backupNow: () => Promise<{ ok: boolean; error?: string }>;
   restoreNow: () => Promise<{ ok: boolean; error?: string }>;
@@ -102,6 +105,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
     isSupabaseConfigured ? "signedOut" : "disabled"
   );
   const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(null);
+  const [appleAvailable, setAppleAvailable] = useState(false);
 
   const skipNextPush = useRef(false);
   const pushTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -119,6 +123,16 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       if (!s) setStatus("signedOut");
     });
     return () => subscription.unsubscribe();
+  }, []);
+
+  // Is native "Sign in with Apple" usable here? True only on a real iOS build
+  // whose App ID has the capability — false in Expo Go / on Android, so the
+  // button stays hidden until the dev build + Apple config exist.
+  useEffect(() => {
+    if (Platform.OS !== "ios") return;
+    AppleAuthentication.isAvailableAsync()
+      .then(setAppleAvailable)
+      .catch(() => setAppleAvailable(false));
   }, []);
 
   // Whole-document last-write-wins, mirroring the web engine.
@@ -206,6 +220,33 @@ export function SyncProvider({ children }: { children: ReactNode }) {
     return { ok: true, needsConfirm };
   }, []);
 
+  // Native Sign in with Apple → exchange Apple's identity token for a Supabase
+  // session (signInWithIdToken). Cancelling the sheet returns ok:false with no
+  // error, so the UI stays quiet. Requires the Apple provider enabled in
+  // Supabase with com.thelifeos.app in its Client IDs list.
+  const signInWithApple = useCallback(async () => {
+    const sb = getSupabase();
+    if (!sb) return { ok: false, error: "Cloud sync isn't configured." };
+    try {
+      const cred = await AppleAuthentication.signInAsync({
+        requestedScopes: [
+          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+          AppleAuthentication.AppleAuthenticationScope.EMAIL,
+        ],
+      });
+      if (!cred.identityToken) return { ok: false, error: "Apple didn't return an identity token." };
+      const { error } = await sb.auth.signInWithIdToken({
+        provider: "apple",
+        token: cred.identityToken,
+      });
+      return error ? { ok: false, error: error.message } : { ok: true };
+    } catch (e: unknown) {
+      const err = e as { code?: string };
+      if (err?.code === "ERR_REQUEST_CANCELED") return { ok: false }; // user backed out
+      return { ok: false, error: "Apple sign-in failed. Please try again." };
+    }
+  }, []);
+
   const signOut = useCallback(async () => {
     const sb = getSupabase();
     if (sb) await sb.auth.signOut();
@@ -241,13 +282,15 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       email: session?.user?.email ?? null,
       status,
       lastSyncedAt,
+      appleAvailable,
       signIn,
       signUp,
+      signInWithApple,
       signOut,
       backupNow,
       restoreNow,
     }),
-    [session, status, lastSyncedAt, signIn, signUp, signOut, backupNow, restoreNow]
+    [session, status, lastSyncedAt, appleAvailable, signIn, signUp, signInWithApple, signOut, backupNow, restoreNow]
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
