@@ -18,6 +18,14 @@ import {
   billingConfigured,
   type PlanId,
 } from "@/lib/billing";
+import {
+  iapAvailable,
+  purchasePlan,
+  restorePurchases,
+  hasPro,
+  planFromInfo,
+  type CustomerInfo,
+} from "@/lib/iap";
 
 /** Full-screen, non-dismissible paywall shown after onboarding. Nothing in the
  *  app is free — the user must start the free trial or buy lifetime to continue.
@@ -35,9 +43,11 @@ export default function Paywall() {
 
   const [selected, setSelected] = useState<PlanId>("monthly");
   const [busy, setBusy] = useState(false);
+  const [restoring, setRestoring] = useState(false);
   const [note, setNote] = useState<string | null>(null);
-  // After the Stripe sheet closes we land here — the user must confirm payment
-  // before anything unlocks (closing the sheet alone never grants access).
+  // Stripe fallback only: after the hosted sheet closes we land here, and the user
+  // must confirm payment before anything unlocks (closing it never grants access).
+  // The native StoreKit path is verified, so it never uses this.
   const [confirming, setConfirming] = useState(false);
 
   const plan = PLANS.find((p) => p.id === selected) ?? PLANS[0];
@@ -52,10 +62,26 @@ export default function Paywall() {
     else setPlan("lifetime");
   };
 
+  // Unlock from an Apple-verified entitlement (native StoreKit path).
+  const unlock = (info: CustomerInfo) => setPlan(planFromInfo(info) ?? "monthly");
+
   const checkout = async () => {
     if (busy) return;
     setNote(null);
     setBusy(true);
+
+    // ── Native StoreKit (App-Store-compliant) — the real Apple payment sheet ──
+    if (iapAvailable) {
+      const r = await purchasePlan(plan.id);
+      setBusy(false);
+      if (r.status === "ok") unlock(r.info); // Apple-verified → unlock immediately
+      else if (r.status === "error") setNote(r.message);
+      else if (r.status === "unavailable") setNote("Purchases aren't available right now — try again shortly.");
+      // cancelled → stay on the paywall, nothing unlocks
+      return;
+    }
+
+    // ── Stripe fallback (web / Expo Go before a native build) ──
     const res = await openCheckout(plan);
     setBusy(false);
     if (res.ok) {
@@ -65,6 +91,17 @@ export default function Paywall() {
     } else if (res.reason === "unconfigured") {
       setNote("Checkout isn't set up yet — add your Stripe Payment Link to enable purchases.");
     }
+  };
+
+  const restore = async () => {
+    if (restoring) return;
+    setNote(null);
+    setRestoring(true);
+    const r = await restorePurchases();
+    setRestoring(false);
+    if (r.status === "ok" && hasPro(r.info)) unlock(r.info);
+    else if (r.status === "ok") setNote("No previous purchase found on this Apple ID.");
+    else if (r.status === "error") setNote(r.message);
   };
 
   const ctaLabel =
@@ -210,9 +247,18 @@ export default function Paywall() {
                 </View>
               ) : null}
               <Text style={[s.fine, { color: c.inkFaint }]}>
-                Secure checkout by Stripe.{" "}
+                {iapAvailable ? "Billed securely through the App Store." : "Secure checkout by Stripe."}{" "}
                 {plan.id === "monthly" ? `No charge for ${TRIAL_DAYS} days — cancel anytime.` : "One payment, no subscription."}
               </Text>
+              {iapAvailable ? (
+                <Pressable onPress={restore} disabled={restoring} style={s.restore}>
+                  {restoring ? (
+                    <ActivityIndicator color={c.inkFaint} size="small" />
+                  ) : (
+                    <Text style={[s.restoreText, { color: c.inkMuted }]}>Restore purchases</Text>
+                  )}
+                </Pressable>
+              ) : null}
             </>
           )}
           {note ? <Text style={[s.fine, { color: c.danger, marginTop: 4 }]}>{note}</Text> : null}
@@ -271,6 +317,8 @@ const makeStyles = (c: Palette) =>
     confirmSub: { fontFamily: fonts.body, fontSize: 13, lineHeight: 19, textAlign: "center", marginTop: 8, marginBottom: 16, maxWidth: 320 },
     confirmAlt: { alignSelf: "center", marginTop: 12, padding: 6 },
     confirmAltText: { fontFamily: fonts.bodySemibold, fontSize: 13 },
+    restore: { alignSelf: "center", marginTop: 12, padding: 6 },
+    restoreText: { fontFamily: fonts.bodySemibold, fontSize: 13 },
     fine: { fontFamily: fonts.body, fontSize: 11.5, textAlign: "center", marginTop: 10, lineHeight: 16 },
     devSkip: { alignSelf: "center", marginTop: 18, padding: 8 },
     devSkipText: { fontFamily: fonts.mono, fontSize: 11 },

@@ -18,6 +18,14 @@ import {
   billingConfigured,
   type Plan,
 } from "@/lib/billing";
+import {
+  iapAvailable,
+  purchasePlan,
+  restorePurchases,
+  hasPro,
+  planFromInfo,
+  type CustomerInfo,
+} from "@/lib/iap";
 
 export default function UpgradeScreen() {
   const { c } = useTheme();
@@ -31,8 +39,9 @@ export default function UpgradeScreen() {
   // On trial → the obvious upgrade is Lifetime; otherwise default to the trial plan.
   const [selected, setSelected] = useState<Plan["id"]>(onTrial ? "lifetime" : "monthly");
   const [busy, setBusy] = useState(false);
-  // Returning from Stripe drops us here; closing the sheet (X) must not grant —
-  // require an explicit confirmation tap before unlocking.
+  const [restoring, setRestoring] = useState(false);
+  // Stripe fallback only: returning from the hosted sheet (X) must not grant —
+  // require an explicit confirmation tap. The native StoreKit path is verified.
   const [confirming, setConfirming] = useState(false);
 
   const plan = PLANS.find((p) => p.id === selected) ?? PLANS[0];
@@ -48,9 +57,28 @@ export default function UpgradeScreen() {
     celebrate(plan.id === "monthly" ? "Trial started — welcome to Pro 🔓" : "Lifetime unlocked — it's all yours 🎉");
   };
 
+  // Unlock from an Apple-verified entitlement (native StoreKit path).
+  const unlock = (info: CustomerInfo) => {
+    const p = planFromInfo(info) ?? "monthly";
+    setPlan(p);
+    celebrate(p === "lifetime" ? "Lifetime unlocked — it's all yours 🎉" : "You're Pro — welcome in 🔓");
+  };
+
   const checkout = async () => {
     if (busy) return;
     setBusy(true);
+
+    // ── Native StoreKit (App-Store-compliant) — the real Apple payment sheet ──
+    if (iapAvailable) {
+      const r = await purchasePlan(plan.id);
+      setBusy(false);
+      if (r.status === "ok") unlock(r.info);
+      else if (r.status === "error") celebrate(r.message);
+      else if (r.status === "unavailable") celebrate("Purchases aren't available right now — try again shortly.");
+      return; // cancelled → nothing changes
+    }
+
+    // ── Stripe fallback (web / Expo Go before a native build) ──
     const res = await openCheckout(plan);
     setBusy(false);
     if (res.ok) setConfirming(true); // can't verify here — confirm before granting
@@ -58,6 +86,16 @@ export default function UpgradeScreen() {
   };
 
   const confirmPaid = () => { setConfirming(false); grant(); };
+
+  const restore = async () => {
+    if (restoring) return;
+    setRestoring(true);
+    const r = await restorePurchases();
+    setRestoring(false);
+    if (r.status === "ok" && hasPro(r.info)) unlock(r.info);
+    else if (r.status === "ok") celebrate("No previous purchase found on this Apple ID.");
+    else if (r.status === "error") celebrate(r.message);
+  };
 
   /* ── Already fully paid / admin ── */
   if (paid) {
@@ -194,10 +232,18 @@ export default function UpgradeScreen() {
               </View>
             ) : null}
             <Text style={[s.fine, { color: c.inkFaint }]}>
-              Secure checkout by Stripe.{" "}
+              {iapAvailable ? "Billed securely through the App Store." : "Secure checkout by Stripe."}{" "}
               {plan.id === "monthly" ? `No charge for ${TRIAL_DAYS} days — cancel anytime.` : "One payment, no subscription."}
             </Text>
-            {!billingConfigured ? (
+            {iapAvailable ? (
+              <Pressable onPress={restore} disabled={restoring} style={s.restore}>
+                {restoring ? (
+                  <ActivityIndicator color={c.inkFaint} size="small" />
+                ) : (
+                  <Text style={[s.restoreText, { color: c.inkMuted }]}>Restore purchases</Text>
+                )}
+              </Pressable>
+            ) : !billingConfigured ? (
               <Text style={[s.fine, { color: c.inkFaint, marginTop: 4 }]}>
                 (Set EXPO_PUBLIC_STRIPE_LIFETIME_URL / _MONTHLY_URL to enable purchases.)
               </Text>
@@ -258,6 +304,8 @@ const makeStyles = (c: Palette) =>
     confirmSub: { fontFamily: fonts.body, fontSize: 13, color: c.inkMuted, lineHeight: 19, textAlign: "center", marginTop: 8, marginBottom: 16, maxWidth: 320 },
     confirmAlt: { alignSelf: "center", marginTop: 12, padding: 6 },
     confirmAltText: { fontFamily: fonts.bodySemibold, fontSize: 13 },
+    restore: { alignSelf: "center", marginTop: 12, padding: 6 },
+    restoreText: { fontFamily: fonts.bodySemibold, fontSize: 13 },
     fine: { fontFamily: fonts.body, fontSize: 11.5, textAlign: "center", marginTop: 10, lineHeight: 16 },
     proBox: { borderWidth: 1, borderRadius: radius.xl, padding: 22, alignItems: "center" },
     proIcon: { width: 48, height: 48, borderRadius: 24, alignItems: "center", justifyContent: "center" },

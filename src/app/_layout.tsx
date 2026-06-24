@@ -19,6 +19,7 @@ import {
 } from "@expo-google-fonts/jetbrains-mono";
 
 import { StoreProvider, useStore, isOnboarded, entitled } from "@/lib/store";
+import { initIAP, getCustomerInfo, onCustomerInfo, hasPro, planFromInfo, type CustomerInfo } from "@/lib/iap";
 import { SyncProvider } from "@/lib/sync";
 import { ThemeProvider, useTheme } from "@/lib/theme";
 import { CelebrationProvider } from "@/lib/celebrate";
@@ -31,7 +32,7 @@ import { EASE } from "@/components/anim";
 
 function Shell() {
   const { c, isDark } = useTheme();
-  const { ready, profile } = useStore();
+  const { ready, profile, setPlan } = useStore();
   const [onboarding, setOnboarding] = useState<boolean | null>(null);
   const [splashGone, setSplashGone] = useState(false);
   const [showWelcome, setShowWelcome] = useState(false);
@@ -41,6 +42,25 @@ function Shell() {
   useEffect(() => {
     if (ready && !isOnboarded(profile)) setOnboarding(true);
   }, [ready, profile]);
+
+  // StoreKit (RevenueCat) is the source of truth for paid access on a native
+  // build. Configure it once, reconcile the local plan with Apple's verified
+  // entitlement, and keep listening for purchases / renewals / restores. No-ops
+  // in Expo Go / on web, so the Stripe flow stays in charge there.
+  useEffect(() => {
+    if (!ready) return;
+    let unsub = () => {};
+    const sync = (info: CustomerInfo | null) => {
+      if (hasPro(info)) setPlan(planFromInfo(info) ?? "monthly");
+    };
+    (async () => {
+      await initIAP();
+      sync(await getCustomerInfo());
+      unsub = onCustomerInfo((info) => sync(info));
+    })();
+    return () => unsub();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready]);
 
   // Play the welcome curtain the first time the user transitions into "entitled"
   // (started a trial / bought) within this session — not on every cold launch.
