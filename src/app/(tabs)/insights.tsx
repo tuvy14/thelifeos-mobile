@@ -1,8 +1,9 @@
 import { View, Text, StyleSheet } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 
 import { Screen } from "@/components/screen";
 import { Card, Eyebrow } from "@/components/ui";
-import { CountUp } from "@/components/anim";
+import { CountUp, Reveal, ProgressBar } from "@/components/anim";
 import Heatmap from "@/components/heatmap";
 import { useTheme, radius, fonts } from "@/lib/theme";
 import {
@@ -12,8 +13,18 @@ import {
   avgScore,
   streak,
 } from "@/lib/store";
+import { getPatterns, type PatternIcon } from "@/lib/patterns";
 
 const DOW = ["S", "M", "T", "W", "T", "F", "S"];
+
+const PATTERN_ICON: Record<PatternIcon, keyof typeof Ionicons.glyphMap> = {
+  sleep: "moon-outline",
+  focus: "flash-outline",
+  trend: "trending-up-outline",
+  time: "time-outline",
+  drink: "wine-outline",
+  water: "water-outline",
+};
 
 export default function InsightsScreen() {
   const { logs, wins, workouts } = useStore();
@@ -27,6 +38,7 @@ export default function InsightsScreen() {
   const best = Math.max(0, ...logs.map((l) => scoreFor(l)));
   const peak = Math.max(1, ...trend.map((t) => t.score));
   const deepWork = Math.round(logs.reduce((a, l) => a + (l.deepWork || 0), 0));
+  const patterns = getPatterns(logs);
 
   const stats = [
     { label: "7-day avg", raw: avg7, fmt: (n: number) => (avg7 ? String(Math.round(n)) : "—") },
@@ -89,6 +101,52 @@ export default function InsightsScreen() {
         ))}
       </View>
 
+      {/* Smart patterns */}
+      {patterns.length > 0 && (
+        <View style={{ marginTop: 22 }}>
+          <View style={styles.patHead}>
+            <Ionicons name="sparkles-outline" size={15} color={c.ink} />
+            <Text style={[styles.patHeadText, { color: c.ink }]}>SMART PATTERNS</Text>
+            <View style={[styles.patTag, { borderColor: c.line }]}>
+              <Text style={[styles.patTagText, { color: c.inkMuted }]}>FROM YOUR DATA</Text>
+            </View>
+          </View>
+          {patterns.map((p, i) => (
+            <Reveal key={p.id} delay={i * 70} style={{ marginTop: 10 }}>
+              <Card padding={16}>
+                <View style={styles.patRow}>
+                  <View
+                    style={[
+                      styles.patIcon,
+                      { borderColor: p.positive ? c.chipBorder : c.line, backgroundColor: c.fill },
+                    ]}
+                  >
+                    <Ionicons name={PATTERN_ICON[p.icon]} size={17} color={c.ink} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <View style={styles.patTitleRow}>
+                      <Text style={[styles.patTitle, { color: c.ink }]} numberOfLines={2}>
+                        {p.title}
+                      </Text>
+                      <Text style={[styles.patSignal, { color: c.inkFaint }]}>{p.strength}%</Text>
+                    </View>
+                    <Text style={[styles.patDetail, { color: c.inkMuted }]}>{p.detail}</Text>
+                    <ProgressBar
+                      pct={p.strength}
+                      color={c.ink}
+                      track={c.fillStrong}
+                      height={5}
+                      rounded={3}
+                      style={{ marginTop: 10 }}
+                    />
+                  </View>
+                </View>
+              </Card>
+            </Reveal>
+          ))}
+        </View>
+      )}
+
       {logs.length === 0 && (
         <Text style={[styles.hint, { color: c.inkFaint }]}>
           Check in a few days running and your trends will fill in here.
@@ -113,4 +171,14 @@ const styles = StyleSheet.create({
   statValue: { fontFamily: fonts.displayBold, fontSize: 24, letterSpacing: -0.5 },
   statLabel: { fontFamily: fonts.body, fontSize: 12, marginTop: 4 },
   hint: { fontFamily: fonts.body, fontSize: 13, textAlign: "center", marginTop: 18, lineHeight: 19 },
+  patHead: { flexDirection: "row", alignItems: "center", gap: 8 },
+  patHeadText: { fontFamily: fonts.bodyBold, fontSize: 13, letterSpacing: 1.2 },
+  patTag: { borderWidth: 1, borderRadius: radius.pill, paddingHorizontal: 8, paddingVertical: 3 },
+  patTagText: { fontFamily: fonts.mono, fontSize: 9, letterSpacing: 0.8 },
+  patRow: { flexDirection: "row", gap: 12 },
+  patIcon: { width: 40, height: 40, borderRadius: radius.md, borderWidth: 1, alignItems: "center", justifyContent: "center" },
+  patTitleRow: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 8 },
+  patTitle: { fontFamily: fonts.displayBold, fontSize: 15, flex: 1, letterSpacing: -0.2 },
+  patSignal: { fontFamily: fonts.mono, fontSize: 11 },
+  patDetail: { fontFamily: fonts.body, fontSize: 13, marginTop: 3, lineHeight: 18 },
 });
