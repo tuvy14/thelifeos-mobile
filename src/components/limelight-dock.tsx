@@ -34,6 +34,40 @@ const CONE_W = 76;
 const CONE_H = 48;
 const BAR_H = 60;
 
+/** A dock icon that springs up + brightens when it becomes the active tab,
+ *  giving each tab switch a satisfying pop in sync with the light beam. */
+function DockIcon({
+  active,
+  activeIcon,
+  inactiveIcon,
+  color,
+}: {
+  active: boolean;
+  activeIcon: keyof typeof Ionicons.glyphMap;
+  inactiveIcon: keyof typeof Ionicons.glyphMap;
+  color: string;
+}) {
+  const scale = useRef(new Animated.Value(active ? 1.14 : 1)).current;
+  useEffect(() => {
+    Animated.spring(scale, {
+      toValue: active ? 1.14 : 1,
+      useNativeDriver: true,
+      speed: 20,
+      bounciness: 12,
+    }).start();
+  }, [active, scale]);
+  return (
+    <Animated.View style={{ transform: [{ scale }] }}>
+      <Ionicons
+        name={active ? activeIcon : inactiveIcon}
+        size={24}
+        color={color}
+        style={{ opacity: active ? 1 : 0.4 }}
+      />
+    </Animated.View>
+  );
+}
+
 /** The web "LimelightNav" reimagined for React Native: a frosted dock whose
  *  active icon is lit by a sliding light beam + glow cone. Replaces the stock
  *  bottom tab bar (passed to <Tabs tabBar={...} />). */
@@ -127,11 +161,11 @@ export default function LimelightDock({ state, navigation }: DockProps) {
               style={styles.item}
               hitSlop={6}
             >
-              <Ionicons
-                name={isActive ? activeIcon : inactiveIcon}
-                size={24}
+              <DockIcon
+                active={isActive}
+                activeIcon={activeIcon}
+                inactiveIcon={inactiveIcon}
                 color={c.ink}
-                style={{ opacity: isActive ? 1 : 0.4 }}
               />
             </Pressable>
           );

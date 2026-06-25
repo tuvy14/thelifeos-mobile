@@ -6,7 +6,7 @@ import { Ionicons } from "@expo/vector-icons";
 
 import { Screen } from "@/components/screen";
 import { Card, Eyebrow, IconBadge } from "@/components/ui";
-import { PressableScale, Reveal, CountUp, Pulse } from "@/components/anim";
+import { PressableScale, Reveal, CountUp, Pulse, GrowBar } from "@/components/anim";
 import ScoreRing from "@/components/score-ring";
 import { useTheme, radius, fonts } from "@/lib/theme";
 import {
@@ -225,15 +225,12 @@ export default function TodayScreen() {
               return (
                 <View key={d.date} style={styles.barCol}>
                   <View style={styles.barTrack}>
-                    <View
-                      style={[
-                        styles.barFill,
-                        {
-                          height: `${Math.max(d.score ? 8 : 0, (d.score / weekMax) * 100)}%`,
-                          backgroundColor: d.score ? c.ink : "transparent",
-                          opacity: isToday ? 1 : 0.55,
-                        },
-                      ]}
+                    <GrowBar
+                      pct={Math.max(d.score ? 8 : 0, (d.score / weekMax) * 100)}
+                      color={d.score ? c.ink : "transparent"}
+                      rounded={radius.sm}
+                      delay={i * 55}
+                      style={{ opacity: isToday ? 1 : 0.55 }}
                     />
                   </View>
                   <Text style={[styles.barDay, { color: isToday ? c.ink : c.inkFaint }]}>{day}</Text>

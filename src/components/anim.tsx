@@ -157,6 +157,47 @@ export function Pulse({
   return <Animated.View style={[style, { transform: [{ scale }] }]}>{children}</Animated.View>;
 }
 
+/** A vertical bar whose height grows from 0 → `pct`% on mount. Drop into a
+ *  flex-end track for an animated column chart. `delay` staggers a row. */
+export function GrowBar({
+  pct,
+  color,
+  delay = 0,
+  rounded = 3,
+  minHeight = 4,
+  style,
+}: {
+  pct: number;
+  color: string;
+  delay?: number;
+  rounded?: number;
+  minHeight?: number;
+  style?: StyleProp<ViewStyle>;
+}) {
+  const target = Math.max(0, Math.min(100, pct));
+  const v = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    const anim = Animated.timing(v, {
+      toValue: 1,
+      duration: 720,
+      delay,
+      easing: EASE,
+      useNativeDriver: false,
+    });
+    anim.start();
+    return () => anim.stop();
+  }, [target, delay, v]);
+  const height = v.interpolate({ inputRange: [0, 1], outputRange: ["0%", `${target}%`] });
+  return (
+    <Animated.View
+      style={[
+        { width: "100%", height, borderRadius: rounded, backgroundColor: color, minHeight: target > 0 ? minHeight : 0 },
+        style,
+      ]}
+    />
+  );
+}
+
 /** A progress bar whose fill animates to `pct` (0–100) on mount/change. */
 export function ProgressBar({
   pct,
