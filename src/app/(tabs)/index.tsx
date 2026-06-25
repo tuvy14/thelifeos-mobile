@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { View, Text, StyleSheet, ActivityIndicator, useWindowDimensions } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router, useLocalSearchParams, type Href } from "expo-router";
@@ -9,6 +9,7 @@ import { Card, Eyebrow, IconBadge } from "@/components/ui";
 import { PressableScale, Reveal, CountUp, Pulse, GrowBar } from "@/components/anim";
 import ScoreRing from "@/components/score-ring";
 import XpBar from "@/components/xp-bar";
+import WeeklyRecap from "@/components/weekly-recap";
 import { useTheme, radius, fonts } from "@/lib/theme";
 import {
   useStore,
@@ -43,10 +44,11 @@ const greeting = () => {
 };
 
 export default function TodayScreen() {
-  const { ready, logs, wins, profile } = useStore();
+  const { ready, logs, wins, profile, habits, habitLog } = useStore();
   const { celebrate } = useCelebrate();
   const { c } = useTheme();
   const { width } = useWindowDimensions();
+  const [recapOpen, setRecapOpen] = useState(false);
   // Check-in hands the XP celebration here via params (fires once per nonce).
   const xpParams = useLocalSearchParams<{ xpGain?: string; lvlUp?: string; t?: string }>();
 
@@ -190,6 +192,29 @@ export default function TodayScreen() {
           levelUpName={xpParams.lvlUp || undefined}
         />
       </Reveal>
+
+      {/* Weekly recap */}
+      <Reveal delay={92} style={{ marginTop: 14 }}>
+        <PressableScale
+          onPress={() => setRecapOpen(true)}
+          style={[styles.recapCard, { borderColor: c.line, backgroundColor: c.card }]}
+        >
+          <View style={[styles.recapIcon, { borderColor: c.line, backgroundColor: c.fill }]}>
+            <Ionicons name="sparkles" size={20} color={c.ink} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.recapTitle, { color: c.ink }]}>Your week, wrapped</Text>
+            <Text style={[styles.recapSub, { color: c.inkMuted }]}>Replay your last 7 days ✨</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={c.inkFaint} />
+        </PressableScale>
+      </Reveal>
+
+      <WeeklyRecap
+        visible={recapOpen}
+        onClose={() => setRecapOpen(false)}
+        data={{ logs, wins, habits, habitLog }}
+      />
 
       {/* Quick actions */}
       <Reveal delay={95} style={{ marginTop: 14 }}>
@@ -392,4 +417,8 @@ const styles = StyleSheet.create({
   winCheck: { width: 20, height: 20, borderRadius: 10, alignItems: "center", justifyContent: "center" },
   winText: { fontFamily: fonts.body, fontSize: 14, flex: 1 },
   empty: { fontFamily: fonts.body, fontSize: 13, marginTop: 12 },
+  recapCard: { flexDirection: "row", alignItems: "center", gap: 14, borderWidth: 1, borderRadius: radius.lg, padding: 16 },
+  recapIcon: { width: 46, height: 46, borderRadius: radius.md, borderWidth: 1, alignItems: "center", justifyContent: "center" },
+  recapTitle: { fontFamily: fonts.displayBold, fontSize: 16, letterSpacing: -0.3 },
+  recapSub: { fontFamily: fonts.body, fontSize: 12.5, marginTop: 2 },
 });
