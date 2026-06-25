@@ -9,6 +9,7 @@ import * as Haptics from "expo-haptics";
 import { useTheme, fonts, radius } from "@/lib/theme";
 import { PressableScale } from "@/components/anim";
 import Logo from "@/components/logo";
+import XpBar from "@/components/xp-bar";
 
 /** Shared top bar for the tab screens. The brand is a tappable "home" button with
  *  a soft breathing glow; the only action is the light/dark toggle. */
@@ -54,13 +55,16 @@ export default function TopBar() {
           TheLife<Text style={{ color: c.inkMuted }}>OS</Text>
         </Text>
       </PressableScale>
-      <Pressable
-        onPress={toggle}
-        style={({ pressed }) => [styles.iconBtn, { borderColor: c.line, opacity: pressed ? 0.55 : 1 }]}
-        hitSlop={8}
-      >
-        <Ionicons name={isDark ? "sunny-outline" : "moon-outline"} size={16} color={c.inkMuted} />
-      </Pressable>
+      <View style={styles.right}>
+        <XpBar variant="compact" onPress={() => router.navigate("/achievements")} />
+        <Pressable
+          onPress={toggle}
+          style={({ pressed }) => [styles.iconBtn, { borderColor: c.line, opacity: pressed ? 0.55 : 1 }]}
+          hitSlop={8}
+        >
+          <Ionicons name={isDark ? "sunny-outline" : "moon-outline"} size={16} color={c.inkMuted} />
+        </Pressable>
+      </View>
     </BlurView>
   );
 }
@@ -74,7 +78,8 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
     borderBottomWidth: 1,
   },
-  brand: { flexDirection: "row", alignItems: "center", gap: 9 },
+  brand: { flexDirection: "row", alignItems: "center", gap: 9, flexShrink: 1 },
+  right: { flexDirection: "row", alignItems: "center", gap: 12 },
   logoWrap: { alignItems: "center", justifyContent: "center" },
   logoGlow: {
     position: "absolute",

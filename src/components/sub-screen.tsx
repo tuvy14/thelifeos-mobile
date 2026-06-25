@@ -50,6 +50,8 @@ export function SubScreen({
         style={{ flex: 1, backgroundColor: "transparent" }}
         contentContainerStyle={{ paddingTop: insets.top + 8, paddingHorizontal: 20, paddingBottom: 56 }}
         keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        automaticallyAdjustKeyboardInsets
         showsVerticalScrollIndicator={false}
       >
         <Animated.View style={{ opacity, transform: [{ translateY }] }}>

@@ -5,10 +5,11 @@ import { Ionicons } from "@expo/vector-icons";
 import { SubScreen } from "@/components/sub-screen";
 import { Card } from "@/components/ui";
 import { PressableScale } from "@/components/anim";
+import { GlassSlider } from "@/components/glass-slider";
 import { useTheme, radius, fonts, type Palette } from "@/lib/theme";
 import { useStore, isPaid, trialDaysLeft } from "@/lib/store";
 import { useSync } from "@/lib/sync";
-import { useFeedbackPrefs, setSoundEnabled, setHapticsEnabled, haptic, playSfx } from "@/lib/feedback";
+import { useFeedbackPrefs, setSoundEnabled, setHapticsEnabled, setVolume, haptic, playSfx } from "@/lib/feedback";
 
 export default function SettingsScreen() {
   const { logs, wins, habits, goals, journal, workouts, revenue, expenses, calendar, profile, resetAll, resetOnboarding } = useStore();
@@ -94,6 +95,26 @@ export default function SettingsScreen() {
           <View style={[s.knob, { backgroundColor: fb.sound ? c.obsidian : c.ink, alignSelf: fb.sound ? "flex-end" : "flex-start" }]} />
         </View>
       </PressableScale>
+
+      {/* Volume */}
+      <View style={[s.volRow, { marginTop: 10, opacity: fb.sound ? 1 : 0.45 }]}>
+        <View style={s.volHead}>
+          <Ionicons name="volume-medium" size={16} color={c.inkMuted} />
+          <Text style={s.volLabel}>VOLUME</Text>
+          <Text style={s.volPct}>{fb.volume}%</Text>
+        </View>
+        <GlassSlider
+          min={0}
+          max={100}
+          step={1}
+          value={fb.volume}
+          disabled={!fb.sound}
+          onChange={(v) => setVolume(v)}
+          onComplete={() => { if (fb.sound) playSfx("checkin"); }}
+          style={{ marginTop: 6 }}
+        />
+      </View>
+
       <PressableScale
         style={[s.row, { marginTop: 10 }]}
         haptics={false}
@@ -180,6 +201,10 @@ const makeStyles = (c: Palette) =>
     rowSub: { fontFamily: fonts.body, fontSize: 12, color: c.inkFaint, marginTop: 2 },
     toggle: { width: 46, height: 27, borderRadius: 14, padding: 3, justifyContent: "center" },
     knob: { width: 21, height: 21, borderRadius: 11 },
+    volRow: { backgroundColor: c.card, borderWidth: 1, borderColor: c.line, borderRadius: radius.lg, paddingHorizontal: 16, paddingTop: 14, paddingBottom: 8 },
+    volHead: { flexDirection: "row", alignItems: "center", gap: 8 },
+    volLabel: { fontFamily: fonts.bodyBold, fontSize: 11, letterSpacing: 1, color: c.inkMuted, flex: 1 },
+    volPct: { fontFamily: fonts.monoMedium, fontSize: 13, color: c.ink },
     dataRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 13, paddingHorizontal: 14 },
     dataLabel: { fontFamily: fonts.body, fontSize: 14, color: c.inkMuted },
     dataValue: { fontFamily: fonts.bodyBold, fontSize: 14, color: c.ink },

@@ -1,7 +1,7 @@
 import { View, Text, TextInput, StyleSheet, type ViewStyle, type TextStyle, type StyleProp } from "react-native";
 import { BlurView } from "expo-blur";
 import { Ionicons } from "@expo/vector-icons";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 
 import { useTheme, radius, fonts, type Palette } from "@/lib/theme";
 import { PressableScale } from "@/components/anim";
@@ -196,14 +196,23 @@ export function EmptyState({
 /* ── Styled text input ── */
 export function Field(props: React.ComponentProps<typeof TextInput>) {
   const { c } = useTheme();
+  const [focused, setFocused] = useState(false);
   return (
     <TextInput
       placeholderTextColor={c.inkFaint}
       {...props}
+      onFocus={(e) => {
+        setFocused(true);
+        props.onFocus?.(e);
+      }}
+      onBlur={(e) => {
+        setFocused(false);
+        props.onBlur?.(e);
+      }}
       style={[
         {
           borderWidth: 1,
-          borderColor: c.line,
+          borderColor: focused ? c.ink : c.line,
           borderRadius: radius.md,
           backgroundColor: c.fill,
           paddingHorizontal: 14,
@@ -211,6 +220,10 @@ export function Field(props: React.ComponentProps<typeof TextInput>) {
           color: c.ink,
           fontFamily: fonts.body,
           fontSize: 14,
+          // glass focus glow — elevates every input screen at once
+          ...(focused
+            ? { shadowColor: c.ink, shadowOpacity: 0.28, shadowRadius: 10, shadowOffset: { width: 0, height: 0 }, elevation: 3 }
+            : null),
         },
         props.style,
       ]}

@@ -718,6 +718,63 @@ export function revenueByCategory(revenue: RevenueEntry[], ym = today().slice(0,
 export const getFocuses = (profile: Profile | null): string[] => profile?.focuses ?? [];
 export const isOnboarded = (profile: Profile | null) => !!profile?.onboardedAt;
 
+/* ── XP & Levels (mirrors web 1:1) ──
+   XP is DERIVED from activity — every daily check-in is worth XP_PER_CHECKIN,
+   every small win XP_PER_WIN — so it stays in step with the synced data and
+   needs nothing extra stored. */
+export const XP_PER_CHECKIN = 5;
+export const XP_PER_WIN = 2;
+export const xpFor = (logs: HealthLog[], wins: Win[]) =>
+  logs.length * XP_PER_CHECKIN + wins.length * XP_PER_WIN;
+
+// Cumulative XP thresholds, named for "running your life like an OS".
+export const LEVELS: { min: number; name: string }[] = [
+  { min: 0, name: "Booting Up" },
+  { min: 25, name: "Spark" },
+  { min: 60, name: "Momentum" },
+  { min: 120, name: "In Flow" },
+  { min: 200, name: "Power User" },
+  { min: 320, name: "Optimized" },
+  { min: 480, name: "Relentless" },
+  { min: 700, name: "Peak Mode" },
+  { min: 1000, name: "Self-Mastery" },
+  { min: 1400, name: "Limitless" },
+];
+
+export interface LevelInfo {
+  level: number; // 1-based
+  name: string;
+  xp: number;
+  curMin: number;
+  nextMin: number | null;
+  intoLevel: number;
+  span: number;
+  toNext: number;
+  pct: number; // 0-100 through the current level
+  isMax: boolean;
+}
+
+export function levelFor(xp: number): LevelInfo {
+  let i = 0;
+  for (let j = 0; j < LEVELS.length; j++) if (xp >= LEVELS[j].min) i = j;
+  const cur = LEVELS[i];
+  const next = LEVELS[i + 1] ?? null;
+  const span = next ? next.min - cur.min : 0;
+  const intoLevel = xp - cur.min;
+  return {
+    level: i + 1,
+    name: cur.name,
+    xp,
+    curMin: cur.min,
+    nextMin: next ? next.min : null,
+    intoLevel,
+    span,
+    toNext: next ? next.min - xp : 0,
+    pct: next ? Math.round((intoLevel / span) * 100) : 100,
+    isMax: !next,
+  };
+}
+
 /* ── Billing entitlement (local, honor-system after Stripe Payment Link) ──
    Real enforcement needs a Stripe webhook → Supabase (server-side, secret key);
    on-device we can only track what plan the user picked. */

@@ -1,18 +1,21 @@
 import { useState } from "react";
 import { View, Text, TextInput, StyleSheet } from "react-native";
-import Slider from "@react-native-community/slider";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
 import { Screen } from "@/components/screen";
 import { Card, Eyebrow } from "@/components/ui";
 import { PressableScale } from "@/components/anim";
+import { GlassSlider } from "@/components/glass-slider";
 import { useTheme, radius, fonts, type Palette } from "@/lib/theme";
 import {
   useStore,
   todayLog,
   FOCUS_RITUALS,
   activeMode,
+  xpFor,
+  levelFor,
+  XP_PER_CHECKIN,
 } from "@/lib/store";
 import { useCelebrate } from "@/lib/celebrate";
 
@@ -27,16 +30,19 @@ function Num({ icon, label, unit, value, onChange }: {
 }) {
   const { c } = useTheme();
   const s = makeStyles(c);
+  const [focused, setFocused] = useState(false);
   return (
-    <View style={s.numCard}>
+    <View style={[s.numCard, focused && s.focusGlow]}>
       <View style={s.numHead}>
-        <Ionicons name={icon} size={14} color={c.inkMuted} />
+        <Ionicons name={icon} size={14} color={focused ? c.ink : c.inkMuted} />
         <Text style={s.numLabel}>{label.toUpperCase()}</Text>
       </View>
       <View style={s.numRow}>
         <TextInput
           value={value}
           onChangeText={onChange}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
           placeholder="0"
           placeholderTextColor={c.inkFaint}
           keyboardType="numeric"
@@ -61,17 +67,7 @@ function Scale({ label, value, onChange, low, high }: {
           {value ? value : "—"}<Text style={s.scaleMax}> /10</Text>
         </Text>
       </View>
-      <Slider
-        minimumValue={1}
-        maximumValue={10}
-        step={1}
-        value={value || 1}
-        onValueChange={onChange}
-        tapToSeek
-        minimumTrackTintColor={c.ink}
-        maximumTrackTintColor={c.line}
-        thumbTintColor={c.ink}
-      />
+      <GlassSlider min={1} max={10} step={1} value={value || 1} onChange={onChange} style={{ marginTop: 2 }} />
       {(low || high) && (
         <View style={s.scaleEnds}>
           <Text style={s.scaleEnd}>{low}</Text>
@@ -87,22 +83,24 @@ function TextRow({ icon, label, placeholder, value, onChange }: {
 }) {
   const { c } = useTheme();
   const s = makeStyles(c);
+  const [focused, setFocused] = useState(false);
   return (
     <View>
       <View style={s.numHead}>
-        <Ionicons name={icon} size={14} color={c.inkMuted} />
+        <Ionicons name={icon} size={14} color={focused ? c.ink : c.inkMuted} />
         <Text style={s.numLabel}>{label.toUpperCase()}</Text>
       </View>
       <TextInput
         value={value} onChangeText={onChange} placeholder={placeholder} placeholderTextColor={c.inkFaint}
-        style={s.textField} multiline
+        onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
+        style={[s.textField, focused && s.focusGlow]} multiline
       />
     </View>
   );
 }
 
 export default function CheckinScreen() {
-  const { logs, mode, profile, saveCheckin } = useStore();
+  const { logs, wins, mode, profile, saveCheckin } = useStore();
   const { celebrate } = useCelebrate();
   const { c } = useTheme();
   const s = makeStyles(c);
@@ -143,6 +141,13 @@ export default function CheckinScreen() {
     setRituals((r) => (r.includes(id) ? r.filter((x) => x !== id) : [...r, id]));
 
   const save = () => {
+    // A brand-new check-in for today earns XP (editing doesn't double-count).
+    const isFirst = !existing;
+    const before = xpFor(logs, wins);
+    const after = before + (isFirst ? XP_PER_CHECKIN : 0);
+    const leveledUp = isFirst && levelFor(after).level > levelFor(before).level;
+    const newName = levelFor(after).name;
+
     saveCheckin({
       sleep: +sleep || 0, water: +water || 0, deepWork: +deepWork || 0, mood, energy, rituals,
       steps: +steps || 0, screenTime: +screenTime || 0, nutrition, intention: intention.trim(),
@@ -152,8 +157,27 @@ export default function CheckinScreen() {
       highlight: highlight.trim(), improve: improve.trim(),
     });
     setSaved(true);
-    celebrate("Checked in — today's win is logged 🔥");
-    setTimeout(() => router.navigate("/"), 850);
+    // Bright check-in chime + a message that reflects XP / a level-up.
+    celebrate(
+      leveledUp
+        ? `Level up — ${newName}! ⚡`
+        : isFirst
+          ? `Checked in · +${XP_PER_CHECKIN} XP earned 🔥`
+          : "Check-in updated. Keep it up 🔥",
+      "checkin"
+    );
+    // Hand the celebration to Today (the XP card lands the +XP pop / level-up
+    // flare exactly where the user arrives). A timestamp makes each fire unique.
+    setTimeout(() => {
+      if (isFirst) {
+        router.navigate({
+          pathname: "/",
+          params: { xpGain: String(XP_PER_CHECKIN), lvlUp: leveledUp ? newName : "", t: String(Date.now()) },
+        });
+      } else {
+        router.navigate("/");
+      }
+    }, 850);
   };
 
   return (
@@ -247,6 +271,7 @@ const makeStyles = (c: Palette) =>
     section: { fontFamily: fonts.monoMedium, fontSize: 11, letterSpacing: 1.6, color: c.inkFaint, marginTop: 24, marginBottom: 12 },
     grid: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
     numCard: { flexGrow: 1, flexBasis: "46%", backgroundColor: c.card, borderWidth: 1, borderColor: c.line, borderRadius: radius.lg, padding: 14 },
+    focusGlow: { borderColor: c.ink, shadowColor: c.ink, shadowOpacity: 0.3, shadowRadius: 12, shadowOffset: { width: 0, height: 0 }, elevation: 4 },
     numHead: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 10 },
     numLabel: { fontFamily: fonts.bodyBold, fontSize: 11, letterSpacing: 1, color: c.inkMuted },
     numRow: { flexDirection: "row", alignItems: "baseline", gap: 6 },

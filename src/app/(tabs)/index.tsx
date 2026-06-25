@@ -1,13 +1,14 @@
 import { useEffect } from "react";
 import { View, Text, StyleSheet, ActivityIndicator, useWindowDimensions } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { router, type Href } from "expo-router";
+import { router, useLocalSearchParams, type Href } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
 import { Screen } from "@/components/screen";
 import { Card, Eyebrow, IconBadge } from "@/components/ui";
 import { PressableScale, Reveal, CountUp, Pulse, GrowBar } from "@/components/anim";
 import ScoreRing from "@/components/score-ring";
+import XpBar from "@/components/xp-bar";
 import { useTheme, radius, fonts } from "@/lib/theme";
 import {
   useStore,
@@ -46,6 +47,8 @@ export default function TodayScreen() {
   const { celebrate } = useCelebrate();
   const { c } = useTheme();
   const { width } = useWindowDimensions();
+  // Check-in hands the XP celebration here via params (fires once per nonce).
+  const xpParams = useLocalSearchParams<{ xpGain?: string; lvlUp?: string; t?: string }>();
 
   const compact = width < 380;
   const ringSize = compact ? 96 : 116;
@@ -176,6 +179,16 @@ export default function TodayScreen() {
             </PressableScale>
           </Pulse>
         </Card>
+      </Reveal>
+
+      {/* Level / XP */}
+      <Reveal delay={85} style={{ marginTop: 14 }}>
+        <XpBar
+          variant="full"
+          fireKey={xpParams.t}
+          gain={Number(xpParams.xpGain) || 0}
+          levelUpName={xpParams.lvlUp || undefined}
+        />
       </Reveal>
 
       {/* Quick actions */}

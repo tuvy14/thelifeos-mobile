@@ -11,23 +11,27 @@ import { createAudioPlayer, setAudioModeAsync, type AudioPlayer } from "expo-aud
 
 const K_SOUND = "lifeos_sound";
 const K_HAPTICS = "lifeos_haptics";
+const K_VOLUME = "lifeos_volume"; // "0".."100" percent (shares the web's key/format)
 
 export interface FeedbackPrefs {
   sound: boolean;
   haptics: boolean;
+  volume: number; // 0-100
 }
 
 // In-memory source of truth (loaded once below). Mutators write through to disk
 // and notify subscribers so the Settings UI stays in sync.
-const prefs: FeedbackPrefs = { sound: true, haptics: true };
+const prefs: FeedbackPrefs = { sound: true, haptics: true, volume: 70 };
 const listeners = new Set<(p: FeedbackPrefs) => void>();
 const emit = () => listeners.forEach((l) => l({ ...prefs }));
 
 (async () => {
   try {
-    const [[, s], [, h]] = await AsyncStorage.multiGet([K_SOUND, K_HAPTICS]);
+    const [[, s], [, h], [, v]] = await AsyncStorage.multiGet([K_SOUND, K_HAPTICS, K_VOLUME]);
     if (s != null) prefs.sound = s !== "0";
     if (h != null) prefs.haptics = h !== "0";
+    if (v != null) prefs.volume = Math.max(0, Math.min(100, Math.round(Number(v)) || 0));
+    applyVolume();
     emit();
   } catch {
     /* keep defaults */
@@ -42,6 +46,12 @@ export function setSoundEnabled(on: boolean) {
 export function setHapticsEnabled(on: boolean) {
   prefs.haptics = on;
   AsyncStorage.setItem(K_HAPTICS, on ? "1" : "0").catch(() => {});
+  emit();
+}
+export function setVolume(pct: number) {
+  prefs.volume = Math.max(0, Math.min(100, Math.round(pct)));
+  AsyncStorage.setItem(K_VOLUME, String(prefs.volume)).catch(() => {});
+  applyVolume();
   emit();
 }
 
@@ -94,20 +104,37 @@ export function haptic(kind: HapticKind = "light") {
 }
 
 // ── Sound effects ────────────────────────────────────────────────────────────
-export type SfxName = "success" | "win" | "celebrate";
+export type SfxName = "success" | "win" | "celebrate" | "checkin";
 
 const SOURCES: Record<SfxName, number> = {
   success: require("../../assets/sounds/success.wav"),
   win: require("../../assets/sounds/win.wav"),
   celebrate: require("../../assets/sounds/celebrate.wav"),
+  checkin: require("../../assets/sounds/checkin.wav"),
 };
 
-// Players are created lazily and reused (cheap to keep three tiny clips loaded).
+// Players are created lazily and reused (cheap to keep the clips loaded).
 const players: Partial<Record<SfxName, AudioPlayer>> = {};
 let audioModeSet = false;
 
+// Push the current volume (0-1) onto every loaded player.
+function applyVolume() {
+  const v = Math.max(0, Math.min(1, prefs.volume / 100));
+  (Object.keys(players) as SfxName[]).forEach((k) => {
+    const p = players[k];
+    if (p) {
+      try {
+        p.volume = v;
+      } catch {
+        /* ignore */
+      }
+    }
+  });
+}
+
 export function playSfx(name: SfxName) {
   if (!prefs.sound || Platform.OS === "web") return;
+  if (prefs.volume <= 0) return;
   try {
     if (!audioModeSet) {
       audioModeSet = true;
@@ -118,6 +145,11 @@ export function playSfx(name: SfxName) {
     if (!p) {
       p = createAudioPlayer(SOURCES[name]);
       players[name] = p;
+    }
+    try {
+      p.volume = Math.max(0, Math.min(1, prefs.volume / 100));
+    } catch {
+      /* ignore */
     }
     p.seekTo(0);
     p.play();

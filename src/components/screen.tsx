@@ -44,6 +44,8 @@ export function Screen({
         style={{ flex: 1, backgroundColor: "transparent" }}
         contentContainerStyle={{ paddingTop: 16, paddingHorizontal: 20, paddingBottom: 48 }}
         keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        automaticallyAdjustKeyboardInsets
         showsVerticalScrollIndicator={false}
         {...scrollProps}
       >

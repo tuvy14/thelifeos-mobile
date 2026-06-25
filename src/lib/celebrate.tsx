@@ -12,10 +12,10 @@ import { Animated, Dimensions, Easing, StyleSheet, Text, View } from "react-nati
 import { Ionicons } from "@expo/vector-icons";
 
 import { useTheme, radius, fonts } from "@/lib/theme";
-import { cheer } from "@/lib/feedback";
+import { cheer, type SfxName } from "@/lib/feedback";
 
 interface CelebrateCtx {
-  celebrate: (message?: string) => void;
+  celebrate: (message?: string, sfx?: SfxName) => void;
 }
 const Ctx = createContext<CelebrateCtx | null>(null);
 
@@ -116,8 +116,8 @@ export function CelebrationProvider({ children }: { children: ReactNode }) {
   const confettiTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const celebrate = useCallback((message?: string) => {
-    cheer("celebrate", "success"); // success haptic + chime, both gated on prefs
+  const celebrate = useCallback((message?: string, sfx: SfxName = "celebrate") => {
+    cheer(sfx, "success"); // success haptic + chosen chime, both gated on prefs
     setSeed((s) => s + 1);
     setConfettiOn(true);
     if (confettiTimer.current) clearTimeout(confettiTimer.current);
